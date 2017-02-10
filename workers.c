@@ -19,8 +19,8 @@
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  cond  = PTHREAD_COND_INITIALIZER;
 
-node_t*         head  = NULL;
-node_t*         tail  = NULL;
+node_t* head = NULL;
+node_t* tail = NULL;
 
 static const int timeout_cnt_rrq = 3;
 static const int timeout_cnt_wrq = 3;
@@ -33,7 +33,8 @@ dump(node_t* node_p)
 {
     printf("VVVVVV start of dump\n");
     do {
-        for (size_t i = 0; i < node_p->sz; i++)
+        size_t i;
+        for (i = 0; i < node_p->sz; i++)
             printf("%c", node_p->buff[i]);
         printf("\n");
 
@@ -78,7 +79,8 @@ get_filename_mode(char* buff, size_t sz, char** filename, char** mode)
 
     *mode = strdup(buff + inxs);
 
-    for (size_t jj = 0; (*mode)[jj]; jj++) {
+    size_t jj;
+    for (jj = 0; (*mode)[jj]; jj++) {
         (*mode)[jj] = tolower((*mode)[jj]);
     }
 
@@ -88,7 +90,8 @@ get_filename_mode(char* buff, size_t sz, char** filename, char** mode)
 void
 print_buff(char* buff, size_t sz)
 {
-    for (size_t i = 0; i < sz; i++)
+    size_t i;
+    for (i = 0; i < sz; i++)
         printf("%c|", buff[i]);
     printf("#\n");
 }
@@ -264,7 +267,7 @@ void*
 rrq_serve(void* p_node)
 {
     node_t* node_p = (node_t*)p_node;
-    //print_buff(node_p->buff, node_p->sz);
+    // print_buff(node_p->buff, node_p->sz);
 
     char* filename = NULL;
     char* mode     = NULL;
@@ -357,7 +360,7 @@ wrq_serve(void* p_node)
 {
 
     node_t* node_p = (node_t*)p_node;
-    //print_buff(node_p->buff, node_p->sz);
+    // print_buff(node_p->buff, node_p->sz);
 
     char* filename = NULL;
     char* mode     = NULL;

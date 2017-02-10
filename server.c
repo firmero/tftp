@@ -120,7 +120,8 @@ main(int argc, char** argv)
             break;
         case 'p':
             portstr = strdup(optarg);
-            for (int j = 0; portstr[j]; j++) {
+			int j;
+            for (j = 0; portstr[j]; j++) {
                 if (!isdigit(portstr[j]))
                     usage(argv[0]);
             }
