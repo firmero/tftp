@@ -1,4 +1,8 @@
 
+CC=gcc
+CFLAGS= -Wall
+LDFLAGS= -lpthread
+
 all: tftp_server run
 
 run:
@@ -6,19 +10,19 @@ run:
 
 
 tftp_server: server.o workers.o workers_data.o flist.o
-	cc -lpthread $^ -o $@ 
+	$(CC) $(LDFLAGS) $^ -o $@ 
 
 server.o: server.c
-	cc $^ -c -o $@
+	$(CC) $(CFLAGS) $^ -c -o $@
 
 workers.o: workers.c workers.h workers_data.o flist.o
-	cc $< -c -o $@
+	$(CC) $(CFLAGS) $< -c -o $@
 
 workers_data.o: workers_data.c flist.o
-	cc $< -c -o $@
+	$(CC) $(CFLAGS) $< -c -o $@
 
 flist.o: flist.c  flist.h
-	cc $< -c -o $@
+	$(CC) $(CFLAGS) $< -c -o $@
 
 clean:
-	rm flist.o workers.o workers_data.o server.o tftp_server 
+	rm -f flist.o workers.o workers_data.o server.o tftp_server 
