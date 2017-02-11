@@ -1,6 +1,6 @@
 # TFTP server
-Simple implementation of tftp server. Main purpose of this project is demonstate  
-some unix system calls.
+Simple implementation of tftp server. The main purpose of this project
+is demonstation of some unix system calls.
 
 ## Usage
 
