@@ -1,4 +1,3 @@
-// todo guards
 #ifndef WK_H
 #define WK_H
 
@@ -45,14 +44,6 @@ struct error_t {
     char* msg;
 };
 
-static struct error_t tftp_error[] = {{"Not defined, see error message (if any)."},
-                                      {"File not found."},
-                                      {"Access violation."},
-                                      {"Disk full or allocation exceeded."},
-                                      {"Illegal TFTP operation."},
-                                      {"Unknown transfer ID."},
-                                      {"File already exists."},
-                                      {"No such user."}};
 struct node_tt {
 
     char*                   buff; // whole packet except first 2 bytest (opcode)

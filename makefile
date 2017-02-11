@@ -5,7 +5,7 @@ LDFLAGS= -lpthread
 
 all: tftp_server run
 
-run:
+run: tftp_server
 	./tftp_server --port 12345 --dir /tmp/
 
 

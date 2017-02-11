@@ -28,6 +28,14 @@ static const int timeout_cnt_wrq = 3;
 static const int timeout_ms_wrq = 900;
 static const int timeout_ms_rrq = 900;
 
+static struct error_t tftp_error[] = {{"Not defined, see error message (if any)."},
+                                      {"File not found."},
+                                      {"Access violation."},
+                                      {"Disk full or allocation exceeded."},
+                                      {"Illegal TFTP operation."},
+                                      {"Unknown transfer ID."},
+                                      {"File already exists."},
+                                      {"No such user."}};
 void
 dump(node_t* node_p)
 {
@@ -99,33 +107,38 @@ print_buff(char* buff, size_t sz)
 int
 get_socket()
 {
-
-    struct sockaddr_storage ca;
-
-    int              fd;
+    int              fd = -1;
     struct addrinfo *r, *rorig, hi;
 
     memset(&hi, 0, sizeof(hi));
-    hi.ai_family   = AF_INET6;
+    hi.ai_family = AF_INET6;
+    // hi.ai_family   = AF_UNSPEC;
     hi.ai_socktype = SOCK_DGRAM;
     hi.ai_flags    = AI_PASSIVE;
-    getaddrinfo(NULL, "2233", &hi, &rorig); // todo check return values
-                                            // port number sa nepouzije,, nevola sa bind
 
-    char ip_str[NI_MAXHOST];
-    char port_str[NI_MAXSERV]; // not in posix
+    // port number will not be used,, no calling of the bind function
+    if (getaddrinfo(NULL, "2233", &hi, &rorig) != 0) {
+        warn("getaddrinfo in get_socket");
+        return -1;
+    }
 
     for (r = rorig; r != NULL; r = r->ai_next) {
 
-        if ((fd = socket(r->ai_family, r->ai_socktype, r->ai_protocol)) == -1)
-            err(1, "socket");
+        if ((fd = socket(r->ai_family, r->ai_socktype, r->ai_protocol)) == -1) {
+            warn("socket");
+            continue;
+        }
 
         int onoff = 0;
-        setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &onoff,
-                   sizeof(onoff)); // by default on my system is on?
+        if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &onoff, sizeof(onoff)) == -1) {
+            close(fd);
+            fd = -1;
+            warn("setsockopt");
+            continue;
+        }
         break;
     }
-    // todo release all..
+
     freeaddrinfo(rorig);
 
     return fd;

@@ -40,10 +40,24 @@ sig_handler(int s)
     accept_query = 0;
 }
 
+void
+print_nameinfo(struct addrinfo* r)
+{
+
+    char ip_str[NI_MAXHOST];
+    char port_str[NI_MAXSERV]; // not in posix
+
+    int error;
+    if ((error = getnameinfo(r->ai_addr, r->ai_addrlen, ip_str, sizeof(ip_str), port_str,
+                             sizeof(port_str), NI_NUMERICHOST | NI_NUMERICSERV)) != 0) {
+        warn("%s", gai_strerror(error));
+    }
+    fprintf(stderr, "\tIP: %s\t Port: %s\n", ip_str, port_str);
+}
+
 int
 get_server_socket(char* portstr)
 {
-
     int              fd = -1;
     struct addrinfo *r, *rorig, hi;
 
@@ -52,42 +66,44 @@ get_server_socket(char* portstr)
     not have to create any IPv4 listening sockets at all. It can create IPv6 sockets only, and then
     disable their IPV6_V6ONLY option. This will allow them to accept both IPv4 and IPv6 clients. The
     client address returned by accept() will tell you whether an IPv4 or IPv6 client has connected.
+        // source: stackoverflow.com/
      */
 
     memset(&hi, 0, sizeof(hi));
-    hi.ai_family   = AF_INET6;
+    hi.ai_family = AF_INET6;
+    // hi.ai_family   = AF_UNSPEC;
     hi.ai_socktype = SOCK_DGRAM;
     hi.ai_flags    = AI_PASSIVE;
-    getaddrinfo(NULL, portstr, &hi, &rorig); // todo check return values
 
-    char ip_str[NI_MAXHOST];
-    char port_str[NI_MAXSERV]; // not in posix
+    if (getaddrinfo(NULL, portstr, &hi, &rorig) != 0)
+        err(6, "getaddrinfo");
 
     for (r = rorig; r != NULL; r = r->ai_next) {
 
-        int error;
-        if ((error = getnameinfo(r->ai_addr, r->ai_addrlen, ip_str, sizeof(ip_str), port_str,
-                                 sizeof(port_str), NI_NUMERICHOST | NI_NUMERICSERV)) != 0) {
-            errx(1, "%s", gai_strerror(error));
-        }
-        printf("Try to create socket and bind:\t\tIP: %s\t Port: %s\n", ip_str, port_str);
+        print_nameinfo(r);
 
-        if ((fd = socket(r->ai_family, r->ai_socktype, r->ai_protocol)) == -1)
-            err(1, "socket");
+        if ((fd = socket(r->ai_family, r->ai_socktype, r->ai_protocol)) == -1) {
+            warn("socket");
+            continue;
+        }
 
         int onoff = 0;
-        setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &onoff,
-                   sizeof(onoff)); // by default on my system is on?
+        if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &onoff, sizeof(onoff)) == -1) {
+            close(fd);
+            fd = -1;
+            warn("setsockopt");
+			continue;
+        }
 
         if (bind(fd, r->ai_addr, r->ai_addrlen) == -1) {
-            err(3, "bind");
+            close(fd);
+            fd = -1;
+            warn("bind");
         }
-        else {
-            printf("ok bind\n");
+        else
             break;
-        }
     }
-    // todo release all..
+
     freeaddrinfo(rorig);
 
     return fd;
@@ -120,7 +136,7 @@ main(int argc, char** argv)
             break;
         case 'p':
             portstr = strdup(optarg);
-			int j;
+            int j;
             for (j = 0; portstr[j]; j++) {
                 if (!isdigit(portstr[j]))
                     usage(argv[0]);
@@ -132,10 +148,14 @@ main(int argc, char** argv)
     }
 
     int fd = get_server_socket(portstr);
+    if (fd == -1) {
+        return 3;
+    }
 
     struct sigaction act;
     bzero(&act, sizeof(act));
     act.sa_handler = sig_handler;
+
     sigaction(SIGINT, &act, NULL);
     sigaction(SIGTERM, &act, NULL);
 
