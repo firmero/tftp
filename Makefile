@@ -8,7 +8,7 @@ all: tftp_server run
 run: tftp_server
 	./tftp_server --port 12345 --dir /tmp
 
-test: tftp_server
+tests test: tftp_server
 	./tftp_server --port 12345 --dir /tmp &
 	./tests/run.sh
 	pkill tftp_server

@@ -56,7 +56,7 @@ struct node_tt {
     char *buff; // whole packet except first 2 bytest (opcode)
     size_t	sz;
     struct sockaddr_storage saddr_st;
-    pthread_t		    tid; // not used
+    pthread_t tid; // not used
 
     struct node_tt *next;
     struct node_tt *prvs;

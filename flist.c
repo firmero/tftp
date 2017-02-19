@@ -1,4 +1,3 @@
-
 #include "flist.h"
 #include <assert.h>
 #include <pthread.h>
@@ -97,7 +96,7 @@ flist_rm_file(int fd, char *filename)
 
 	fnode_t *fnode_p = fhead;
 	do {
-		if (strcmp(fnode_p->filename, filename) == 0){
+		if (strcmp(fnode_p->filename, filename) == 0) {
 			break;
 		}
 

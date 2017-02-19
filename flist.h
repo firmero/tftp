@@ -26,6 +26,7 @@ struct fnode_tt {
 typedef struct fnode_tt fnode_t;
 
 
+// return value:
 // 1 means it was the last occurrence in list, 0 not the last
 int flist_rm_file(int fd, char *filename);
 
