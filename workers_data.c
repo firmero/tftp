@@ -4,7 +4,7 @@ void
 append_node(node_t* node_p)
 {
 
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&query_list_mutex);
     if (!head) {
 
         head = node_p;
@@ -21,9 +21,10 @@ append_node(node_t* node_p)
         tail         = node_p;
     }
     // dump(head);
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&query_list_mutex);
 }
 
+// buff has whole packet except OPCODE_SIZE bytes
 node_t*
 create_node(size_t sz, char* buff, struct sockaddr_storage ca)
 {
@@ -31,7 +32,7 @@ create_node(size_t sz, char* buff, struct sockaddr_storage ca)
 
     node_p->sz   = sz;
     node_p->buff = malloc(sz);
-    memcpy(node_p->buff, buff + 2, sz);
+    memcpy(node_p->buff, buff, sz);
 
     node_p->saddr_st = ca;
 
@@ -47,7 +48,7 @@ void
 remove_node(node_t* node_p)
 {
 
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&query_list_mutex);
     if (node_p->next && node_p->prvs) {
         node_p->prvs->next = node_p->next;
         node_p->next->prvs = node_p->prvs;
@@ -77,8 +78,8 @@ remove_node(node_t* node_p)
     }
 
     // if (head) dump(head);
-    pthread_cond_signal(&cond);
-    pthread_mutex_unlock(&mutex);
+    pthread_cond_signal(&query_finished);
+    pthread_mutex_unlock(&query_list_mutex);
 }
 void
 cleanup(node_t* node_p, char* filename, char* mode)
