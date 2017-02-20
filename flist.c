@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 
+// file list head and tail
 fnode_t *fhead = NULL;
 fnode_t *ftail = NULL;
 

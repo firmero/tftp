@@ -30,6 +30,13 @@
 
 #define	ACK_SIZE  (OPCODE_SIZE + BLOCK_NUM_SIZE)
 
+// upper bound of received data
+#define	RCV_UDP_SIZE (BLOCK_SIZE + OPCODE_SIZE + BLOCK_NUM_SIZE)
+#define	RCV_HDR_SIZE (OPCODE_SIZE + BLOCK_NUM_SIZE)
+
+// send data header
+#define	SND_HDR_SIZE (OPCODE_SIZE + BLOCK_NUM_SIZE)
+
 enum TFTP_ERROR {
 
     ERR_NOTDEFINED = 0,

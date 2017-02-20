@@ -8,12 +8,20 @@ all: tftp_server run
 run: tftp_server
 	./tftp_server --port 12345 --dir /tmp
 
-tests test: tftp_server
-	./tftp_server --port 12345 --dir /tmp &
-	./tests/run.sh
-	pkill tftp_server
-	rm -f client_file* server_file*
+tests: simple parallel
 
+simple: tftp_server
+	./tftp_server --port 12345 --dir /tmp &
+	./tests/simple.sh
+	pkill tftp_server
+	rm -f client_file* server_file* /tmp/client_file* /tmp/server_file*
+
+parallel: tftp_server
+	./tftp_server --port 12345 --dir /tmp &
+	./tests/parallel.sh
+	pkill tftp_server
+	rm -f client_file* server_file* /tmp/client_file* /tmp/server_file*
+	
 tftp_server: server.o workers.o workers_data.o flist.o
 	$(CC) $^ -o $@ $(LDFLAGS) 
 
@@ -30,4 +38,4 @@ flist.o: flist.c  flist.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
 clean:
-	rm -f flist.o workers.o workers_data.o server.o tftp_server client_file* server_file*
+	rm -f flist.o workers.o workers_data.o server.o tftp_server client_file* server_file* /tmp/client_file* /tmp/server_file*

@@ -123,7 +123,7 @@ get_socket()
 	addr_hint.ai_flags = AI_PASSIVE;
 
 	// port number will not be used,, no calling of the bind function
-	if (getaddrinfo(NULL, "2233", &addr_hint, &addrinfo_orig) != 0) {
+	if (getaddrinfo(NULL, "9999", &addr_hint, &addrinfo_orig) != 0) {
 		warn("getaddrinfo in get_socket");
 		return (-1);
 	}
@@ -202,7 +202,7 @@ send_block(int file_fd, int socket, char *buff, int block_number,
 {
 	int r, sum_read = 0;
 	do {
-		r = read(file_fd, buff + 4 + sum_read,
+		r = read(file_fd, buff + SND_HDR_SIZE + sum_read,
 				(size_t)(block_size - sum_read));
 
 		if (r < 0) {
@@ -340,7 +340,7 @@ rrq_serve(void *p_node)
 
 	// ===========================
 
-	char buff[BLOCK_SIZE + 4]; // 2B opcode; 2B block number
+	char buff[RCV_UDP_SIZE];
 
 	struct pollfd poll_fds;
 	poll_fds.fd = socket;
@@ -434,7 +434,8 @@ void *wrq_serve(void *p_node)	{
 
 	// ===========================
 
-	char buff[BLOCK_SIZE + 4]; // 2B opcode; 2B block number
+	// buffer for received data
+	char buff[RCV_UDP_SIZE];
 
 	struct pollfd poll_fds;
 	poll_fds.fd = socket;
@@ -493,10 +494,10 @@ void *wrq_serve(void *p_node)	{
 			break;
 		case 1: // want data packet
 			receive_sz = recvfrom(socket, buff,
-							BLOCK_SIZE + 4, 0,
+							RCV_UDP_SIZE, 0,
 							NULL, 0);
 
-			if (receive_sz < 4) { // malformed packet
+			if (receive_sz < RCV_HDR_SIZE) { // malformed packet
 				break;
 			}
 
@@ -511,15 +512,16 @@ void *wrq_serve(void *p_node)	{
 
 			if (get_block_number == block_number + 1) {
 				block_number++;
-				int wcnt = receive_sz - 4;
+				int wcnt = receive_sz - RCV_HDR_SIZE;
 				int w, sum_write = 0;
 
 				pthread_rwlock_wrlock(rwlock);
 
-			do {
+				do {
 
-				w = write(file_fd, buff + 4 + sum_write,
-							(wcnt - sum_write));
+				w = write(file_fd,
+						buff + RCV_HDR_SIZE + sum_write,
+						(wcnt - sum_write));
 
 				if (w < 0) {
 					if (errno == EDQUOT)
@@ -537,7 +539,7 @@ void *wrq_serve(void *p_node)	{
 				}
 				sum_write += w;
 
-			} while (sum_write < wcnt);
+				} while (sum_write < wcnt);
 
 				pthread_rwlock_unlock(rwlock);
 
@@ -545,7 +547,7 @@ void *wrq_serve(void *p_node)	{
 							block_number);
 
 				// if got final block
-				if (receive_sz < BLOCK_SIZE + 4) {
+				if (receive_sz < RCV_UDP_SIZE) {
 					done = 1;
 				}
 			}

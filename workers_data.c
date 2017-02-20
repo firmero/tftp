@@ -33,6 +33,8 @@ create_node(size_t sz, const char *buff, struct sockaddr_storage ca)
 	memcpy(node_p->buff, buff, sz);
 
 	node_p->saddr_st = ca;
+	node_p->next = NULL;
+	node_p->prvs = NULL;
 
 	return (node_p);
 }
@@ -45,7 +47,6 @@ free_node(node_t *node_p)
 void
 remove_node(node_t *node_p)
 {
-
 	pthread_mutex_lock(&query_list_mutex);
 	if (node_p->next && node_p->prvs) {
 		node_p->prvs->next = node_p->next;
