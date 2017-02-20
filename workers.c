@@ -17,10 +17,15 @@
 #include <unistd.h>
 
 pthread_mutex_t query_list_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t query_finished = PTHREAD_COND_INITIALIZER;
 
-node_t *head = NULL;
-node_t *tail = NULL;
+flist_t flist = {	.head = NULL, .tail = NULL,
+					.mutex = PTHREAD_MUTEX_INITIALIZER };
+
+query_list_t qlist = {
+				.head = NULL, .tail = NULL,
+				.mutex = PTHREAD_MUTEX_INITIALIZER,
+				.query_finished = PTHREAD_COND_INITIALIZER};
+
 
 static const int timeout_cnt_rrq = 3;
 static const int timeout_cnt_wrq = 3;
@@ -57,7 +62,7 @@ dump(const node_t *node_p)
 void
 close_file(int ffd, const char *filename)
 {
-	if (flist_rm_file(ffd, filename))
+	if (flist_rm_file(ffd, filename, &flist))
 		close(ffd);
 	// else ffd is added to waitng list for closing
 }
@@ -319,13 +324,13 @@ rrq_serve(void *p_node)
 
 	// filename and mode release function cleanup(node_p, filename, mode)
 	if (!get_filename_mode(node_p->buff, node_p->sz, &filename, &mode)) {
-		remove_node(node_p);
+		remove_node(node_p, &qlist);
 		return (NULL);
 	}
 
 	int socket = get_socket();
 	if (socket == -1) {
-		remove_node(node_p);
+		remove_node(node_p, &qlist);
 		return (NULL);
 	}
 
@@ -336,7 +341,7 @@ rrq_serve(void *p_node)
 	if (strcmp(mode, "octet") != 0) {
 		send_err(socket, node_p->saddr_st, ERR_NOTDEFINED,
 				"Server support only octet mode transmission.");
-		remove_node(node_p);
+		remove_node(node_p, &qlist);
 		return (NULL);
 	}
 
@@ -367,13 +372,13 @@ rrq_serve(void *p_node)
 					ERR_NOTDEFINED, strerror(errno));
 
 		close(socket);
-		cleanup(node_p, filename, mode);
+		cleanup(node_p, filename, mode, &qlist);
 		return (NULL);
 	}
 
 	// ========= file_fd
 
-	pthread_rwlock_t *rwlock = flist_add_file(filename);
+	pthread_rwlock_t *rwlock = flist_add_file(filename, &flist);
 
 	int file_sz = lseek(file_fd, 0, SEEK_END);
 	lseek(file_fd, 0, SEEK_SET);
@@ -392,7 +397,7 @@ rrq_serve(void *p_node)
 						node_p, poll_fds, BLOCK_SIZE)) {
 			pthread_rwlock_unlock(rwlock);
 			close_file(file_fd, filename);
-			cleanup(node_p, filename, mode);
+			cleanup(node_p, filename, mode, &qlist);
 			close(socket);
 			return (NULL);
 		}
@@ -410,7 +415,7 @@ rrq_serve(void *p_node)
 #endif
 
 	close_file(file_fd, filename);
-	cleanup(node_p, filename, mode);
+	cleanup(node_p, filename, mode, &qlist);
 	close(socket);
 
 #ifdef DEBUG
@@ -431,13 +436,13 @@ void *wrq_serve(void *p_node)	{
 
 	// filename and mode release function cleanup(node_p, filename, mode)
 	if (!get_filename_mode(node_p->buff, node_p->sz, &filename, &mode)) {
-		remove_node(node_p);
+		remove_node(node_p, &qlist);
 		return (NULL);
 	}
 
 	int socket = get_socket();
 	if (socket == -1) {
-		remove_node(node_p);
+		remove_node(node_p, &qlist);
 		return (NULL);
 	}
 
@@ -470,11 +475,11 @@ void *wrq_serve(void *p_node)	{
 			send_err(socket, node_p->saddr_st,
 					ERR_NOTDEFINED, strerror(errno));
 		close(socket);
-		cleanup(node_p, filename, mode);
+		cleanup(node_p, filename, mode, &qlist);
 		return (NULL);
 	}
 
-	pthread_rwlock_t *rwlock = flist_add_file(filename);
+	pthread_rwlock_t *rwlock = flist_add_file(filename, &flist);
 
 	// ========= accept wrq
 
@@ -579,7 +584,7 @@ CL:
 #endif
 
     close_file(file_fd, filename);
-	cleanup(node_p, filename, mode);
+	cleanup(node_p, filename, mode, &qlist);
 	close(socket);
 
 #ifdef DEBUG

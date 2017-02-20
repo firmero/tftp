@@ -20,6 +20,7 @@
 // server root directory
 char *dir = "/tmp/";
 volatile sig_atomic_t accept_query = 1;
+extern query_list_t qlist;
 
 static struct option longopts[] = {
 	{"port", required_argument, NULL, 'p'},
@@ -224,12 +225,12 @@ main(int argc, char **argv)
 			node_t *node_p;
 			node_p	= create_node(recv_sz - OPCODE_SIZE,
 						buff + OPCODE_SIZE, sockaddr);
-			append_node(node_p);
+			append_node(node_p, &qlist);
 
 			if (pthread_create(&node_p->tid, &attrbs,
 						rrq_serve, node_p) != 0) {
 				warn("pthread_create");
-				remove_node(node_p);
+				remove_node(node_p, &qlist);
 			}
 
 			break;
@@ -237,12 +238,12 @@ main(int argc, char **argv)
 
 			node_p = create_node(recv_sz - OPCODE_SIZE,
 						buff + OPCODE_SIZE, sockaddr);
-			append_node(node_p);
+			append_node(node_p, &qlist);
 
 			if (pthread_create(&node_p->tid, &attrbs,
 						wrq_serve, node_p) != 0) {
 				warn("pthread_create");
-				remove_node(node_p);
+				remove_node(node_p, &qlist);
 			}
 
 			break;
@@ -251,11 +252,11 @@ main(int argc, char **argv)
 		}
 	}
 
-	pthread_mutex_lock(&query_list_mutex);
-	while (head) {
-		pthread_cond_wait(&query_finished, &query_list_mutex);
+	pthread_mutex_lock(&qlist.mutex);
+	while (qlist.head) {
+		pthread_cond_wait(&qlist.query_finished, &qlist.mutex);
 	}
-	pthread_mutex_unlock(&query_list_mutex);
+	pthread_mutex_unlock(&qlist.mutex);
 
 	if (portstr)
 		free(portstr);

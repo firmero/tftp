@@ -78,8 +78,17 @@ struct node_tt {
     struct node_tt *next;
     struct node_tt *prvs;
 };
-
 typedef struct node_tt node_t;
+
+struct query_list_tt {
+
+	node_t *head;
+	node_t *tail;
+
+	pthread_mutex_t mutex;
+	pthread_cond_t query_finished;
+};
+typedef struct query_list_tt query_list_t;
 
 void* rrq_serve(void *x);
 void* wrq_serve(void *x);
@@ -90,19 +99,16 @@ print_info(const struct sockaddr_storage *saddr_st,
 			enum PRINT_INFO wr);
 
 void dump(const node_t *);
-void append_node(node_t *node_p);
+void append_node(node_t *node_p, query_list_t *qlist);
 
 node_t *create_node(size_t sz, const char *buff, struct sockaddr_storage ca);
 void free_node(node_t *node_p);
-void remove_node(node_t *node_p);
+void remove_node(node_t *node_p, query_list_t *qlist);
 
-void cleanup(node_t *node_p, char *filename, char *mode);
-
-extern pthread_mutex_t query_list_mutex;
+void cleanup(node_t *node_p, char *filename, char *mode, query_list_t *qlist);
 
 // signal when is node unregistred from list
-extern pthread_cond_t query_finished;
 extern char	*dir;
-extern node_t *head, *tail;
+
 
 #endif

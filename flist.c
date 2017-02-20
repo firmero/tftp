@@ -6,35 +6,31 @@
 #include <string.h>
 #include <unistd.h>
 
-// file list head and tail
-fnode_t *fhead = NULL;
-fnode_t *ftail = NULL;
-
-pthread_mutex_t fmutex = PTHREAD_MUTEX_INITIALIZER;
-
 pthread_rwlock_t *
-flist_add_file(const char *filename)
+flist_add_file(const char *filename, flist_t *flist)
 {
 	fnode_t *fnode_p = NULL;
 
-	pthread_mutex_lock(&fmutex);
-	if (!fhead) {
+	pthread_mutex_t *fmutex = &flist->mutex;
+
+	pthread_mutex_lock(fmutex);
+	if (!flist->head) {
 
 		fnode_p = malloc(sizeof (fnode_t));
 
-		fhead = fnode_p;
-		ftail = fnode_p;
+		flist->head = fnode_p;
+		flist->tail = fnode_p;
 
-		ftail->next    = NULL;
-		ftail->prvs    = NULL;
-		ftail->fd_list = NULL;
+		flist->tail->next    = NULL;
+		flist->tail->prvs    = NULL;
+		flist->tail->fd_list = NULL;
 
-		ftail->cnt		= 1;
-		ftail->filename = strdup(filename);
-		pthread_rwlock_init(&ftail->rw_lock, NULL);
+		flist->tail->cnt		= 1;
+		flist->tail->filename = strdup(filename);
+		pthread_rwlock_init(&flist->tail->rw_lock, NULL);
 	} else {
 
-		fnode_p = fhead;
+		fnode_p = flist->head;
 		do {
 			if (strcmp(fnode_p->filename, filename) == 0)
 			break;
@@ -51,16 +47,16 @@ flist_add_file(const char *filename)
 			fnode_p->filename = strdup(filename);
 			pthread_rwlock_init(&fnode_p->rw_lock, NULL);
 
-			fnode_p->prvs    = ftail;
+			fnode_p->prvs    = flist->tail;
 			fnode_p->next	 = NULL;
 			fnode_p->fd_list = NULL;
-			ftail->next	= fnode_p;
-			ftail		= fnode_p;
+			flist->tail->next	= fnode_p;
+			flist->tail		= fnode_p;
 		} else {
 			fnode_p->cnt++;
 		}
 	}
-	pthread_mutex_unlock(&fmutex);
+	pthread_mutex_unlock(fmutex);
 
 	return (&fnode_p->rw_lock);
 }
@@ -89,13 +85,16 @@ free_fnode(fnode_t *fnode_p)
 // if there is more node with same filename,
 // add fd to list (the last filename release fds)
 int
-flist_rm_file(int fd, const char *filename)
+flist_rm_file(int fd, const char *filename, flist_t *flist)
 {
-	pthread_mutex_lock(&fmutex);
+	pthread_mutex_t *fmutex = &flist->mutex;
 
-	assert(fhead);
+	pthread_mutex_lock(fmutex);
 
-	fnode_t *fnode_p = fhead;
+	assert(flist->head);
+
+	fnode_t *fnode_p = flist->head;
+
 	do {
 		if (strcmp(fnode_p->filename, filename) == 0) {
 			break;
@@ -119,7 +118,7 @@ flist_rm_file(int fd, const char *filename)
 		fnode_p->fd_list = fd_node_p;
 
 		fnode_p->cnt--;
-		pthread_mutex_unlock(&fmutex);
+		pthread_mutex_unlock(fmutex);
 		return (0);
 	}
 
@@ -131,18 +130,18 @@ flist_rm_file(int fd, const char *filename)
 	} else if (!fnode_p->prvs) {
 		if (!fnode_p->next) {
 			free_fnode(fnode_p);
-			fhead = NULL;
+			flist->head = NULL;
 		} else {
 			fnode_p->next->prvs = NULL;
-			fhead = fnode_p->next;
+			flist->head = fnode_p->next;
 			free_fnode(fnode_p);
 		}
 	} else {
 		fnode_p->prvs->next = NULL;
-		ftail = fnode_p->prvs;
+		flist->tail = fnode_p->prvs;
 		free_fnode(fnode_p);
 	}
-	pthread_mutex_unlock(&fmutex);
+	pthread_mutex_unlock(fmutex);
 
 	return (1);
 }

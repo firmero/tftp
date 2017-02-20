@@ -29,11 +29,20 @@ struct fnode_tt {
 };
 typedef struct fnode_tt fnode_t;
 
+struct flist_tt {
+
+	fnode_t *head;
+	fnode_t *tail;
+
+	pthread_mutex_t mutex;
+
+};
+typedef struct flist_tt flist_t;
 
 // return value:
 // 1 means it was the last occurrence in list, 0 not the last
-int flist_rm_file(int fd, const char *filename);
+int flist_rm_file(int fd, const char *filename, flist_t *);
 
-pthread_rwlock_t *flist_add_file(const char *filename);
+pthread_rwlock_t *flist_add_file(const char *filename, flist_t *);
 
 #endif
