@@ -13,10 +13,12 @@
 #include <unistd.h>
 
 // for query packet
-#define	BUF_LEN 1024
+#define	BUFF_LEN 1024
 
 #define	BLOCK_SIZE 512
 
+
+// exit errors
 #define	ERROR_GETADDRINFO 3
 #define	ERROR_OPENDIR 4
 #define	ERROR_CANNOT_GET_SOCKET 5
@@ -24,37 +26,43 @@
 // # of bytes
 #define	OPCODE_SIZE 2
 #define	BLOCK_NUM_SIZE 2
+#define	ERROR_CODE_SIZE 2
 
-enum EE {
+#define	ACK_SIZE  (OPCODE_SIZE + BLOCK_NUM_SIZE)
 
-    EE_NOTDEFINED = 0,
-    EE_FILENFOUND = 1,
-    EE_ACCESSVIOLATION = 2,
-    EE_DISKFULL	= 3,
-    EE_ILLEGALOP = 4,
-    EE_UNKNOWNBN = 5,
-    EE_FILEEXIST = 6,
-    EE_NOSUCHUSER = 7
+enum TFTP_ERROR {
+
+    ERR_NOTDEFINED = 0,
+    ERR_FILENFOUND = 1,
+    ERR_ACCESSVIOLATION = 2,
+    ERR_DISKFULL	= 3,
+    ERR_ILLEGALOP = 4,
+    ERR_UNKNOWNBN = 5,
+    ERR_FILEEXIST = 6,
+    ERR_NOSUCHUSER = 7
 };
-enum SS { SS_RQ, SS_WQ };
+enum PRINT_INFO { INFO_RQ, INFO_WQ };
 
 enum opcodes_t {
 
-    OP_RRQ  = 1,
-    OP_WRQ  = 2,
-    OP_DATA = 3,
-    OP_ACK  = 4,
-    OP_ERR  = 5
+    OPCODE_RRQ  = 1,
+    OPCODE_WRQ  = 2,
+    OPCODE_DATA = 3,
+    OPCODE_ACK  = 4,
+    OPCODE_ERR  = 5
 };
 
 struct error_t {
     char *msg;
 };
 
+// control thread uses list of queries,
+// query is represent by this node
 struct node_tt {
 
-    char *buff; // whole packet except first 2 bytest (opcode)
+    char *buff; // copy of whole packet except first 2 bytest (opcode)
     size_t	sz;
+
     struct sockaddr_storage saddr_st;
     pthread_t tid; // not used
 
@@ -68,13 +76,14 @@ void* rrq_serve(void *x);
 void* wrq_serve(void *x);
 
 void
-print_info(struct sockaddr_storage *saddr_st,
-			char *filename, char *mode, enum SS wr);
+print_info(const struct sockaddr_storage *saddr_st,
+			const char *filename, const char *mode,
+			enum PRINT_INFO wr);
 
-void dump(node_t *);
+void dump(const node_t *);
 void append_node(node_t *node_p);
 
-node_t *create_node(size_t sz, char *buff, struct sockaddr_storage ca);
+node_t *create_node(size_t sz, const char *buff, struct sockaddr_storage ca);
 void free_node(node_t *node_p);
 void remove_node(node_t *node_p);
 
@@ -86,4 +95,5 @@ extern pthread_mutex_t query_list_mutex;
 extern pthread_cond_t query_finished;
 extern char	*dir;
 extern node_t *head, *tail;
+
 #endif

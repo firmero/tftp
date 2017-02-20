@@ -12,7 +12,7 @@ fnode_t *ftail = NULL;
 pthread_mutex_t fmutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_rwlock_t *
-flist_add_file(char *filename)
+flist_add_file(const char *filename)
 {
 	fnode_t *fnode_p = NULL;
 
@@ -86,9 +86,9 @@ free_fnode(fnode_t *fnode_p)
 
 // 1 means it was the last occurrence in list, 0 not the last
 // if there is more node with same filename,
-// add fd list (the last filename release fds)
+// add fd to list (the last filename release fds)
 int
-flist_rm_file(int fd, char *filename)
+flist_rm_file(int fd, const char *filename)
 {
 	pthread_mutex_lock(&fmutex);
 

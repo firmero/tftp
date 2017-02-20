@@ -17,7 +17,7 @@ print_status()
 send_file()
 {
 	echo -e "\e[0;36m[========= gen client_file $1 MB =========] \e[0m"   
-	dd bs=M count=$1 </dev/urandom > client_file_$1mb
+	dd bs=M count=$1 </dev/urandom > client_file_$1mb 2>/dev/null
 	echo -e "\e[0;36m[========= DONE gen client_file $1 MB =========] \e[0m"   
 
 	echo -e "\e[0;33m[========= Put file =========] \e[0m"   
@@ -32,7 +32,7 @@ send_file()
 recieve_file()
 {
 	echo -e "\e[0;36m[========= gen server_file $1 MB =========] \e[0m"   
-	dd bs=M count=$1 </dev/urandom > $DIR/server_file_$1mb
+	dd bs=M count=$1 </dev/urandom > $DIR/server_file_$1mb 2>/dev/null
 	echo -e "\e[0;36m[========= DONE gen server_file $1 MB =========] \e[0m"   
 
 	echo -e "\e[0;33m[========= Get file =========] \e[0m"   

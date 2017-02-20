@@ -24,7 +24,7 @@ append_node(node_t *node_p)
 
 // buff has whole packet except OPCODE_SIZE bytes
 node_t *
-create_node(size_t sz, char *buff, struct sockaddr_storage ca)
+create_node(size_t sz, const char *buff, struct sockaddr_storage ca)
 {
 	node_t *node_p = malloc(sizeof (node_t));
 

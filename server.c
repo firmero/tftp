@@ -17,6 +17,7 @@
 
 #include "workers.h"
 
+// server root directory
 char *dir = "/tmp/";
 volatile sig_atomic_t accept_query = 1;
 
@@ -27,7 +28,7 @@ static struct option longopts[] = {
 	{NULL, 0, NULL, 0}};
 
 void
-usage(char *prg_name)
+usage(const char *prg_name)
 {
 	fprintf(stderr, "Usage: %s [OPTION]...\n\n"
 			"\t-p, --port    port number           [ 69 ] \n"
@@ -43,7 +44,7 @@ sig_handler(int signal)
 }
 
 void
-print_nameinfo(struct addrinfo *r)
+print_nameinfo(const struct addrinfo *r)
 {
 	char ip_str[NI_MAXHOST];
 	char port_str[NI_MAXSERV]; // not in posix
@@ -58,9 +59,9 @@ print_nameinfo(struct addrinfo *r)
 }
 
 int
-get_server_socket(char *portstr)
+get_server_socket(const char *portstr)
 {
-	int fd = -1;
+	int fd = -1; // returned socket
 	struct addrinfo *r, *rorig, hi;
 
 	/*
@@ -125,6 +126,7 @@ int
 main(int argc, char **argv)
 {
 
+	// default waiting port
 	char *portstr = "69";
 
 	int ch;
@@ -141,6 +143,7 @@ main(int argc, char **argv)
 				memcpy(dir, optarg, arg_length);
 				dir[arg_length] = '/';
 				dir[arg_length + 1] = '\0';
+				// maybe better just append '/', while // ~ /
 			}
 			else
 				dir = strdup(optarg);
@@ -169,46 +172,45 @@ main(int argc, char **argv)
 		}
 	}
 
-	int fd = get_server_socket(portstr);
-	if (fd == -1) {
+	int socket = get_server_socket(portstr);
+	if (socket == -1) {
 		return (ERROR_CANNOT_GET_SOCKET);
 	}
 
-	struct sigaction act;
-	bzero(&act, sizeof (act));
-	act.sa_handler = sig_handler;
+	struct sigaction sig_act;
+	bzero(&sig_act, sizeof (sig_act));
+	sig_act.sa_handler = sig_handler;
 
-	sigaction(SIGINT, &act, NULL);
-	sigaction(SIGTERM, &act, NULL);
+	sigaction(SIGINT, &sig_act, NULL);
+	sigaction(SIGTERM, &sig_act, NULL);
 
 	// printf("main thread id : %lu\n", pthread_self());
 
-	struct sockaddr_storage ca;
+	struct sockaddr_storage sockaddr;
 
-	socklen_t st_sz = sizeof (ca);
-	char buff[BUF_LEN + 1];
+	socklen_t sockaddr_sz = sizeof (sockaddr);
+	char buff[BUFF_LEN + 1];
 
 	while (accept_query) {
 
-		int n = recvfrom(fd, buff, BUF_LEN, 0,
-					(struct sockaddr *)&ca, &st_sz);
-		if (n == -1) {
+		int recv_sz = recvfrom(socket, buff, BUFF_LEN, 0,
+				(struct sockaddr *)&sockaddr, &sockaddr_sz);
+		if (recv_sz == -1) {
 			warn("recvfrom ");
 			continue;
 		}
 
-		if (n < 2) // nonvalid packet
+		if (recv_sz < 2) // nonvalid packet
 			continue;
 
-		// todo!!!
-		uint16_t opcode = (buff[0] << 8) | buff[1];
+		uint16_t opcode = ((uint8_t)buff[0] << 8) | (uint8_t) buff[1];
 
-		pthread_attr_t a;
-		if (pthread_attr_init(&a) != 0) {
+		pthread_attr_t attrbs;
+		if (pthread_attr_init(&attrbs) != 0) {
 			warn("pthread_attr_init");
 			continue;
 		}
-		if (pthread_attr_setdetachstate(&a,
+		if (pthread_attr_setdetachstate(&attrbs,
 						PTHREAD_CREATE_DETACHED) != 0) {
 			warn("pthread_attr_setdetachstate");
 			continue;
@@ -216,29 +218,30 @@ main(int argc, char **argv)
 
 		switch (opcode) {
 
-		case OP_RRQ:;
+		case OPCODE_RRQ:;
 
-			node_t *node_p = create_node(n - OPCODE_SIZE,
-							buff + OPCODE_SIZE, ca);
+			node_t *node_p;
+			node_p	= create_node(recv_sz - OPCODE_SIZE,
+						buff + OPCODE_SIZE, sockaddr);
 			append_node(node_p);
 
-			if (pthread_create(&node_p->tid, &a,
+			if (pthread_create(&node_p->tid, &attrbs,
 						rrq_serve, node_p) != 0) {
 				warn("pthread_create");
-				// todo release resources?
+				remove_node(node_p);
 			}
 
 			break;
-		case OP_WRQ:
+		case OPCODE_WRQ:
 
-			node_p = create_node(n - OPCODE_SIZE,
-						buff + OPCODE_SIZE, ca);
+			node_p = create_node(recv_sz - OPCODE_SIZE,
+						buff + OPCODE_SIZE, sockaddr);
 			append_node(node_p);
 
-			if (pthread_create(&node_p->tid, &a,
+			if (pthread_create(&node_p->tid, &attrbs,
 						wrq_serve, node_p) != 0) {
 				warn("pthread_create");
-				// todo release resources?
+				remove_node(node_p);
 			}
 
 			break;

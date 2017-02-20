@@ -38,16 +38,16 @@ static struct error_t tftp_error[] = {
 			{"File already exists."},
 			{"No such user."}};
 void
-dump(node_t *node_p)
+dump(const node_t *node_p)
 {
 	printf("VVVVVV start of dump\n");
 	do {
-	size_t i;
-	for (i = 0; i < node_p->sz; i++)
-	    printf("%c", node_p->buff[i]);
-	printf("\n");
+		size_t i;
+		for (i = 0; i < node_p->sz; i++)
+			printf("%c", node_p->buff[i]);
+		printf("\n");
 
-	node_p = node_p->next;
+		node_p = node_p->next;
 
 	} while (node_p);
 
@@ -55,7 +55,7 @@ dump(node_t *node_p)
 }
 
 void
-close_file(int ffd, char *filename)
+close_file(int ffd, const char *filename)
 {
 	if (flist_rm_file(ffd, filename))
 		close(ffd);
@@ -63,11 +63,12 @@ close_file(int ffd, char *filename)
 }
 
 // if success return 1, otherwise 0
-// expect NULL filename, mode
+// expect NULL filename and mode
 int
 get_filename_mode(const char *buff, const size_t sz,
 			char **filename, char **mode)
 {
+	// index start, index end
 	size_t inxe = 0, inxs = 0;
 
 	while (inxe < sz && buff[inxe++])
@@ -99,7 +100,7 @@ get_filename_mode(const char *buff, const size_t sz,
 }
 
 void
-print_buff(char *buff, size_t sz)
+print_buff(const char *buff, size_t sz)
 {
 	size_t i;
 	for (i = 0; i < sz; i++)
@@ -107,28 +108,31 @@ print_buff(char *buff, size_t sz)
 	printf("#\n");
 }
 
+// on error return -1
 int
 get_socket()
 {
+	// returned socket
 	int fd = -1;
-	struct addrinfo *r, *rorig, hi;
+	struct addrinfo *addrinfo, *addrinfo_orig, addr_hint;
 
-	memset(&hi, 0, sizeof (hi));
-	hi.ai_family = AF_INET6;
-	// hi.ai_family   = AF_UNSPEC;
-	hi.ai_socktype = SOCK_DGRAM;
-	hi.ai_flags = AI_PASSIVE;
+	memset(&addr_hint, 0, sizeof (addr_hint));
+	addr_hint.ai_family = AF_INET6;
+	// addr_hint.ai_family   = AF_UNSPEC;
+	addr_hint.ai_socktype = SOCK_DGRAM;
+	addr_hint.ai_flags = AI_PASSIVE;
 
 	// port number will not be used,, no calling of the bind function
-	if (getaddrinfo(NULL, "2233", &hi, &rorig) != 0) {
+	if (getaddrinfo(NULL, "2233", &addr_hint, &addrinfo_orig) != 0) {
 		warn("getaddrinfo in get_socket");
 		return (-1);
 	}
 
-	for (r = rorig; r != NULL; r = r->ai_next) {
+	for (addrinfo = addrinfo_orig; addrinfo != NULL;
+					addrinfo = addrinfo->ai_next) {
 
-		if ((fd = socket(r->ai_family, r->ai_socktype,
-						r->ai_protocol)) == -1) {
+		if ((fd = socket(addrinfo->ai_family, addrinfo->ai_socktype,
+						addrinfo->ai_protocol)) == -1) {
 			warn("socket");
 			continue;
 		}
@@ -144,44 +148,47 @@ get_socket()
 		break;
 	}
 
-	freeaddrinfo(rorig);
+	freeaddrinfo(addrinfo_orig);
 
 	return (fd);
 }
 
 void
-send_ack(int fd, struct sockaddr_storage saddr_st, uint16_t bn)
+send_ack(int fd, struct sockaddr_storage saddr_st, uint16_t block_number)
 {
-	char ack[4];
-	uint16_t opcode = htons(OP_ACK);
-	uint16_t nbn = htons(bn);
+	char ack[ACK_SIZE];
+	uint16_t opcode = htons(OPCODE_ACK);
+	uint16_t nbn = htons(block_number);
 
-	memcpy(ack, &opcode, 2);
-	memcpy(ack + 2, &nbn, 2);
+	memcpy(ack, &opcode, OPCODE_SIZE);
+	memcpy(ack + OPCODE_SIZE, &nbn, BLOCK_NUM_SIZE);
 
-	if (sendto(fd, ack, 4, 0, (struct sockaddr *)&saddr_st,
+	if (sendto(fd, ack, ACK_SIZE, 0, (struct sockaddr *)&saddr_st,
 				sizeof (saddr_st)) == -1)
 		warn("couldn't send ack packet");
 }
 
 void
-send_err(int fd, struct sockaddr_storage saddr_st, enum EE error, char *msg)
+send_err(int fd, struct sockaddr_storage saddr_st,
+			enum TFTP_ERROR error, const char *msg)
 {
 	if (!msg)
 		msg = tftp_error[error].msg;
 
 	int sz = strlen(msg) + 1; // for '\0'
+	int header_sz = OPCODE_SIZE + ERROR_CODE_SIZE;
 
-	char *buff = malloc(sz + 4); // opcode, errcode
+	char *buff = malloc(sz + header_sz); // opcode, errcode
 
-	uint16_t opcode = htons(OP_ERR);
+	uint16_t opcode = htons(OPCODE_ERR);
 	uint16_t errcode = htons(error);
 
-	memcpy(buff, &opcode, OPCODE_SIZE);
-	memcpy(buff + 2, &errcode, 2);
-	memcpy(buff + 4, msg, sz);
 
-	if (sendto(fd, buff, sz + 4, 0, (struct sockaddr *)&saddr_st,
+	memcpy(buff, &opcode, OPCODE_SIZE);
+	memcpy(buff + OPCODE_SIZE, &errcode, ERROR_CODE_SIZE);
+	memcpy(buff + header_sz, msg, sz);
+
+	if (sendto(fd, buff, sz + header_sz, 0, (struct sockaddr *)&saddr_st,
 				sizeof (saddr_st)) == -1) {
 		warn("couldn't send error packet");
 	}
@@ -190,76 +197,82 @@ send_err(int fd, struct sockaddr_storage saddr_st, enum EE error, char *msg)
 }
 
 int
-send_block(int ffd, int fd, char *buff, int bn, node_t *node_p,
-		struct pollfd fds, int block_size)
+send_block(int file_fd, int socket, char *buff, int block_number,
+			const node_t *node_p, struct pollfd fds, int block_size)
 {
-	int rcnt = block_size;
-
-	int r, rr = 0;
+	int r, sum_read = 0;
 	do {
-		r = read(ffd, buff + 4 + rr, (size_t)(block_size - rr));
+		r = read(file_fd, buff + 4 + sum_read,
+				(size_t)(block_size - sum_read));
+
 		if (r < 0) {
 			warn("read in send_block");
 			return (0);
 		}
 
-	rr += r;
-	} while (rr < block_size);
+		sum_read += r;
+	} while (sum_read < block_size);
 
-	uint16_t opcode = htons(OP_DATA);
-	uint16_t nbn = htons(bn);
+	uint16_t opcode = htons(OPCODE_DATA);
+	uint16_t nbn = htons(block_number);
 
-	memcpy(buff, &opcode, 2);
-	memcpy(buff + 2, &nbn, 2);
+	memcpy(buff, &opcode, OPCODE_SIZE);
+	memcpy(buff + OPCODE_SIZE, &nbn, BLOCK_NUM_SIZE);
 
-	sendto(fd, buff, rcnt + 4, 0, (struct sockaddr *)&node_p->saddr_st,
-			sizeof (node_p->saddr_st));
+	int  header_sz = OPCODE_SIZE + BLOCK_NUM_SIZE;
+
+	sendto(socket, buff, block_size + header_sz, 0,
+				(struct sockaddr *)&node_p->saddr_st,
+				sizeof (node_p->saddr_st));
 
 	// == wait for ack
 
 	int done = 0;
 	int nth_timeout = 1;
-	char ack[4]; // 2B opcode, 2B block number
-	int n;
+
+	char ack[ACK_SIZE]; // 2B opcode, 2B block number
+	int receive_sz;
 
 	uint16_t ack_opcode;
-	uint16_t ack_bn;
+	uint16_t ack_block_number;
 
 	do {
-		int rp = poll(&fds, 1, timeout_ms_rrq);
+		int poll_events = poll(&fds, 1, timeout_ms_rrq);
 
-		switch (rp) {
+		switch (poll_events) {
 		case -1:
-			warn("pool::");
+			warn("poll::");
 			return (0);
 		case 0: // timeout
 			if (nth_timeout < timeout_cnt_rrq) {
 
 				// retransmit
-			sendto(fd, buff, rcnt + 4, 0,
+			sendto(socket, buff, block_size + header_sz, 0,
 				(struct sockaddr *)&node_p->saddr_st,
 				sizeof (node_p->saddr_st));
 
-			nth_timeout++;
+				nth_timeout++;
 			} else // timeouts runs out
 				return (0);
 
 			break;
 		case 1: // want ack packet
 
-			n = recvfrom(fd, ack, 4, 0, NULL, 0);
+			receive_sz = recvfrom(socket, ack, ACK_SIZE,
+								0, NULL, 0);
 
-			if (n != 4)
+			if (receive_sz != ACK_SIZE)
 				return (0);
 
 			ack_opcode = ((uint8_t)ack[0] << 8) | (uint8_t)ack[1];
 
-			ack_bn = (uint8_t)ack[3] | ((uint8_t)ack[2] << 8);
+			ack_block_number = (uint8_t)ack[3]
+						    | ((uint8_t)ack[2] << 8);
 
-			if (ack_opcode != OP_ACK)  // ignore, dupl
+			if (ack_opcode != OPCODE_ACK)  // ignore, dupl
 				break;
 
-			if (ack_bn == bn)
+			if (ack_block_number == block_number)
 				done = 1;
 
 			break;
@@ -274,12 +287,13 @@ send_block(int ffd, int fd, char *buff, int bn, node_t *node_p,
 	return (1); // ok
 }
 void
-print_info(struct sockaddr_storage *saddr_st, char *filename,
-		char *mode, enum SS wr)
+print_info(const struct sockaddr_storage *saddr_st, const char *filename,
+			const char *mode, enum PRINT_INFO wr)
 {
 	char ip_str[NI_MAXHOST];
 	char port_str[NI_MAXSERV]; // not in posix
 	int error;
+
 	if ((error = getnameinfo((struct sockaddr *)&*saddr_st,
 				sizeof (struct sockaddr_storage), ip_str,
 				sizeof (ip_str), port_str, sizeof (port_str),
@@ -289,7 +303,7 @@ print_info(struct sockaddr_storage *saddr_st, char *filename,
 
 	printf("name: %s\n", filename);
 	printf("mode: %s\n", mode);
-	char *prefix = wr == SS_WQ ? "WRQ" : "RRQ";
+	char *prefix = wr == INFO_WQ ? "WRQ" : "RRQ";
 
 	fprintf(stderr, "%s_packet_from: %s %s \n", prefix, ip_str, port_str);
 }
@@ -309,15 +323,16 @@ rrq_serve(void *p_node)
 		return (NULL);
 	}
 
-	int fd = get_socket();
-	if (fd == -1) {
+	int socket = get_socket();
+	if (socket == -1) {
 		remove_node(node_p);
 		return (NULL);
 	}
 
-	print_info(&node_p->saddr_st, filename, mode, SS_RQ);
+	print_info(&node_p->saddr_st, filename, mode, INFO_RQ);
+
 	if (strcmp(mode, "octet") != 0) {
-		send_err(fd, node_p->saddr_st, EE_NOTDEFINED,
+		send_err(socket, node_p->saddr_st, ERR_NOTDEFINED,
 				"Server support only octet mode transmission.");
 		remove_node(node_p);
 		return (NULL);
@@ -327,11 +342,9 @@ rrq_serve(void *p_node)
 
 	char buff[BLOCK_SIZE + 4]; // 2B opcode; 2B block number
 
-	struct pollfd fds;
-	fds.fd = fd;
-	fds.events = POLLIN;
-
-	uint16_t bn = 1; // block number
+	struct pollfd poll_fds;
+	poll_fds.fd = socket;
+	poll_fds.events = POLLIN;
 
 	char *tmp = malloc(strlen(filename) + strlen(dir) + 1);
 	strcpy(tmp, dir);
@@ -339,43 +352,46 @@ rrq_serve(void *p_node)
 	free(filename);
 	filename = tmp;
 
-	int ffd = open(filename, O_RDONLY);
+	int file_fd = open(filename, O_RDONLY);
 
 	extern int errno;
-	if (ffd == -1) {
+	if (file_fd == -1) {
 
 		if (errno == ENOENT)
-			send_err(fd, node_p->saddr_st, EE_FILENFOUND, NULL);
+			send_err(socket, node_p->saddr_st,
+					ERR_FILENFOUND, NULL);
 		else
-			send_err(fd, node_p->saddr_st,
-					EE_NOTDEFINED, strerror(errno));
+			send_err(socket, node_p->saddr_st,
+					ERR_NOTDEFINED, strerror(errno));
 
-		close(fd);
+		close(socket);
 		cleanup(node_p, filename, mode);
 		return (NULL);
 	}
 
-	// ========= ffd
+	// ========= file_fd
 
 	pthread_rwlock_t *rwlock = flist_add_file(filename);
 
-	int fsz = lseek(ffd, 0, SEEK_END);
-	lseek(ffd, 0, SEEK_SET);
+	int file_sz = lseek(file_fd, 0, SEEK_END);
+	lseek(file_fd, 0, SEEK_SET);
 
 	int p, m;
 
-	p = fsz / BLOCK_SIZE;
-	m = fsz % BLOCK_SIZE;
+	p = file_sz / BLOCK_SIZE;
+	m = file_sz % BLOCK_SIZE;
 
 	pthread_rwlock_rdlock(rwlock);
 
-	for (bn = 1; bn <= p; bn++) {
+	uint16_t block_number;
+	for (block_number = 1; block_number <= p; block_number++) {
 
-		if (!send_block(ffd, fd, buff, bn, node_p, fds, BLOCK_SIZE)) {
+		if (!send_block(file_fd, socket, buff, block_number,
+						node_p, poll_fds, BLOCK_SIZE)) {
 			pthread_rwlock_unlock(rwlock);
-			close_file(ffd, filename);
+			close_file(file_fd, filename);
 			cleanup(node_p, filename, mode);
-			close(fd);
+			close(socket);
 			return (NULL);
 		}
 	}
@@ -384,12 +400,12 @@ rrq_serve(void *p_node)
 	// the last block must have size < BLOCK_SIZE,
 	// so if size of file is multiple of BLOCK_SIZE,
 	// then is needed to send packet with empty payload
-	send_block(ffd, fd, buff, bn, node_p, fds, m);
+	send_block(file_fd, socket, buff, block_number, node_p, poll_fds, m);
 	pthread_rwlock_unlock(rwlock);
 
-	close_file(ffd, filename);
+	close_file(file_fd, filename);
 	cleanup(node_p, filename, mode);
-	close(fd);
+	close(socket);
 	printf(" [RRQ thread %lu done ]\n", node_p->tid);
 	return (NULL);
 }
@@ -408,22 +424,21 @@ void *wrq_serve(void *p_node)	{
 		return (NULL);
 	}
 
-	int fd = get_socket();
-	if (fd == -1) {
+	int socket = get_socket();
+	if (socket == -1) {
 		remove_node(node_p);
 		return (NULL);
 	}
 
-	print_info(&node_p->saddr_st, filename, mode, SS_WQ);
+	print_info(&node_p->saddr_st, filename, mode, INFO_WQ);
 
 	// ===========================
 
 	char buff[BLOCK_SIZE + 4]; // 2B opcode; 2B block number
 
-	struct pollfd fds;
-	fds.fd = fd;
-    fds.events = POLLIN;
-	uint16_t bn = 0; // block number
+	struct pollfd poll_fds;
+	poll_fds.fd = socket;
+    poll_fds.events = POLLIN;
 
 	char *tmp = malloc(strlen(filename) + strlen(dir) + 1);
 	strcpy(tmp, dir);
@@ -431,16 +446,16 @@ void *wrq_serve(void *p_node)	{
 	free(filename);
 	filename = tmp;
 
-	int ffd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+	int file_fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     extern int errno;
-	if (ffd == -1) {
+	if (file_fd == -1) {
 		if (errno == EACCES)
-			send_err(fd, node_p->saddr_st,
-					EE_ACCESSVIOLATION, NULL);
+			send_err(socket, node_p->saddr_st,
+					ERR_ACCESSVIOLATION, NULL);
 		else
-			send_err(fd, node_p->saddr_st,
-					EE_NOTDEFINED, strerror(errno));
-		close(fd);
+			send_err(socket, node_p->saddr_st,
+					ERR_NOTDEFINED, strerror(errno));
+		close(socket);
 		cleanup(node_p, filename, mode);
 		return (NULL);
 	}
@@ -449,15 +464,18 @@ void *wrq_serve(void *p_node)	{
 
 	// ========= accept wrq
 
-	send_ack(fd, node_p->saddr_st, bn);
+	uint16_t block_number = 0;
+
+	send_ack(socket, node_p->saddr_st, block_number);
     int done = 0;
 	int nth_timeout = 1;
-	int n;
+	int receive_sz;
 
-	uint16_t get_opcode, get_bn;
+	uint16_t get_opcode, get_block_number;
+
     do {
-		int rp = poll(&fds, 1, timeout_ms_wrq);
-		switch (rp) {
+		int poll_events = poll(&poll_fds, 1, timeout_ms_wrq);
+		switch (poll_events) {
 		case -1:
 			warn("poll::");
 			done = 1;
@@ -466,66 +484,83 @@ void *wrq_serve(void *p_node)	{
 
 			if (nth_timeout < timeout_cnt_wrq) {
 				// retransmit
-				send_ack(fd, node_p->saddr_st, bn);
+				send_ack(socket, node_p->saddr_st,
+							block_number);
+
 				nth_timeout++;
 			} else // timeouts runs out
 				done = 1;
 			break;
 		case 1: // want data packet
-			n = recvfrom(fd, buff, BLOCK_SIZE + 4, 0, NULL, 0);
-			if (n < 4) { // malformed packet
-				break;
-			}
-			get_opcode = ((uint8_t)buff[0] << 8) | (uint8_t)buff[1];
-			get_bn = (uint8_t)buff[3] | ((uint8_t)buff[2] << 8);
-			if (get_opcode != OP_DATA) { // ignore
+			receive_sz = recvfrom(socket, buff,
+							BLOCK_SIZE + 4, 0,
+							NULL, 0);
+
+			if (receive_sz < 4) { // malformed packet
 				break;
 			}
 
-			if (get_bn == bn + 1) {
-				bn++;
-				int wcnt = n - 4;
-				int w, rw = 0;
+			get_opcode = ((uint8_t)buff[0] << 8) | (uint8_t)buff[1];
+
+			get_block_number = (uint8_t)buff[3]
+						| ((uint8_t)buff[2] << 8);
+
+			if (get_opcode != OPCODE_DATA) { // ignore
+				break;
+			}
+
+			if (get_block_number == block_number + 1) {
+				block_number++;
+				int wcnt = receive_sz - 4;
+				int w, sum_write = 0;
 
 				pthread_rwlock_wrlock(rwlock);
 
 			do {
 
-				w = write(ffd, buff + 4 + rw, (wcnt - rw));
+				w = write(file_fd, buff + 4 + sum_write,
+							(wcnt - sum_write));
+
 				if (w < 0) {
 					if (errno == EDQUOT)
-						send_err(fd, node_p->saddr_st,
-						EE_DISKFULL, NULL);
+						send_err(socket,
+							node_p->saddr_st,
+							ERR_DISKFULL, NULL);
 					else
-						send_err(fd, node_p->saddr_st,
-						EE_NOTDEFINED, strerror(errno));
+						send_err(socket,
+							node_p->saddr_st,
+							ERR_NOTDEFINED,
+							strerror(errno));
 
 					pthread_rwlock_unlock(rwlock);
 					goto CL;
 				}
-				rw += w;
+				sum_write += w;
 
-			} while (rw < wcnt);
+			} while (sum_write < wcnt);
 
 				pthread_rwlock_unlock(rwlock);
 
-				send_ack(fd, node_p->saddr_st, bn);
-				if (n < BLOCK_SIZE + 4) { // get final block
+				send_ack(socket, node_p->saddr_st,
+							block_number);
+
+				// if got final block
+				if (receive_sz < BLOCK_SIZE + 4) {
 					done = 1;
 				}
 			}
 			break;
 		default:
 			fprintf(stderr, "Unexpected return value "
-					"in send_block switch");
+							"in send_block switch");
 			break;
 		}
 	} while (!done);
 
 CL:
-    close_file(ffd, filename);
+    close_file(file_fd, filename);
 	cleanup(node_p, filename, mode);
-	close(fd);
+	close(socket);
 
 	printf(" [WRQ thread %lu done ]\n", node_p->tid);
 
