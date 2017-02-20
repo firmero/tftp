@@ -63,15 +63,10 @@ remove_node(node_t *node_p)
 			head				= node_p->next;
 			free_node(node_p);
 		}
-	} else if (!node_p->next) {
-		if (!node_p->prvs) {
-			free_node(node_p);
-			head = NULL;
-		} else {
-			node_p->prvs->next	= NULL;
-			tail				= node_p->prvs;
-			free_node(node_p);
-		}
+	} else {
+		node_p->prvs->next	= NULL;
+		tail				= node_p->prvs;
+		free_node(node_p);
 	}
 
 	// if (head) dump(head);

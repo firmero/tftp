@@ -51,9 +51,9 @@ flist_add_file(const char *filename)
 			fnode_p->filename = strdup(filename);
 			pthread_rwlock_init(&fnode_p->rw_lock, NULL);
 
-			fnode_p->prvs  = ftail;
-			fnode_p->next  = NULL;
-			ftail->fd_list = NULL;
+			fnode_p->prvs    = ftail;
+			fnode_p->next	 = NULL;
+			fnode_p->fd_list = NULL;
 			ftail->next	= fnode_p;
 			ftail		= fnode_p;
 		} else {
@@ -105,11 +105,14 @@ flist_rm_file(int fd, const char *filename)
 
 	} while (fnode_p);
 
+	// there must exist node with same filename
 	assert(fnode_p);
 
 	if (fnode_p->cnt > 1) {
 
 		fd_node_t *fd_node_p = malloc(sizeof (fd_node_t));
+
+		// append current list after node
 		fd_node_p->next		= fnode_p->fd_list; // NULL or nonempty
 		fd_node_p->fd		= fd;
 
@@ -134,15 +137,10 @@ flist_rm_file(int fd, const char *filename)
 			fhead = fnode_p->next;
 			free_fnode(fnode_p);
 		}
-	} else if (!fnode_p->next) {
-		if (!fnode_p->prvs) {
-			free_fnode(fnode_p);
-			fhead = NULL;
-		} else {
-			fnode_p->prvs->next = NULL;
-			ftail = fnode_p->prvs;
-			free_fnode(fnode_p);
-		}
+	} else {
+		fnode_p->prvs->next = NULL;
+		ftail = fnode_p->prvs;
+		free_fnode(fnode_p);
 	}
 	pthread_mutex_unlock(&fmutex);
 
