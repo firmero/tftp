@@ -12,6 +12,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#define	DEF_PORT "69"
+
 // for query packet
 #define	BUFF_LEN 1024
 

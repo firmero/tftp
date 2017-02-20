@@ -329,7 +329,9 @@ rrq_serve(void *p_node)
 		return (NULL);
 	}
 
+#ifdef DEBUG
 	print_info(&node_p->saddr_st, filename, mode, INFO_RQ);
+#endif
 
 	if (strcmp(mode, "octet") != 0) {
 		send_err(socket, node_p->saddr_st, ERR_NOTDEFINED,
@@ -403,10 +405,19 @@ rrq_serve(void *p_node)
 	send_block(file_fd, socket, buff, block_number, node_p, poll_fds, m);
 	pthread_rwlock_unlock(rwlock);
 
+#ifdef DEBUG
+	char *dbg_filename = strdup(filename);
+#endif
+
 	close_file(file_fd, filename);
 	cleanup(node_p, filename, mode);
 	close(socket);
-	printf(" [RRQ thread %lu done ]\n", node_p->tid);
+
+#ifdef DEBUG
+	printf(" [RRQ file %s done ]\n", dbg_filename);
+	free(dbg_filename);
+#endif
+
 	return (NULL);
 }
 // WRQ
@@ -430,7 +441,9 @@ void *wrq_serve(void *p_node)	{
 		return (NULL);
 	}
 
+#ifdef DEBUG
 	print_info(&node_p->saddr_st, filename, mode, INFO_WQ);
+#endif
 
 	// ===========================
 
@@ -560,11 +573,19 @@ void *wrq_serve(void *p_node)	{
 	} while (!done);
 
 CL:
+	;
+#ifdef DEBUG
+	char * dbg_filename = strdup(filename);
+#endif
+
     close_file(file_fd, filename);
 	cleanup(node_p, filename, mode);
 	close(socket);
 
-	printf(" [WRQ thread %lu done ]\n", node_p->tid);
+#ifdef DEBUG
+	printf(" [WRQ file %s done ]\n", dbg_filename);
+	free(dbg_filename);
+#endif
 
 	return (NULL);
 }

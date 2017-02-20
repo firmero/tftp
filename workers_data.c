@@ -9,12 +9,12 @@ append_node(node_t *node_p)
 		head = node_p;
 		tail = node_p;
 
-		tail->next = NULL;
-		tail->prvs = NULL;
+		// tail->next = NULL;
+		// tail->prvs = NULL;
 	} else {
 
 		node_p->prvs = tail;
-		node_p->next = NULL;
+		// node_p->next = NULL;
 		tail->next	= node_p;
 		tail		= node_p;
 	}
@@ -30,9 +30,11 @@ create_node(size_t sz, const char *buff, struct sockaddr_storage ca)
 
 	node_p->sz   = sz;
 	node_p->buff = malloc(sz);
+	// release by free_node()
 	memcpy(node_p->buff, buff, sz);
 
 	node_p->saddr_st = ca;
+	// init there, not in append_node()
 	node_p->next = NULL;
 	node_p->prvs = NULL;
 

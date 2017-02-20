@@ -126,8 +126,7 @@ int
 main(int argc, char **argv)
 {
 
-	// default waiting port
-	char *portstr = "69";
+	char *portstr = NULL;
 
 	int ch;
 	extern int errno;
@@ -172,7 +171,9 @@ main(int argc, char **argv)
 		}
 	}
 
-	int socket = get_server_socket(portstr);
+	int socket = portstr ?	get_server_socket(portstr):
+						get_server_socket(DEF_PORT);
+
 	if (socket == -1) {
 		return (ERROR_CANNOT_GET_SOCKET);
 	}
@@ -256,7 +257,12 @@ main(int argc, char **argv)
 	}
 	pthread_mutex_unlock(&query_list_mutex);
 
+	if (portstr)
+		free(portstr);
+
+#ifdef DEBUG
 	fprintf(stderr, "===== tftp server exit ======\n");
+#endif
 
 	exit(0);
 }
