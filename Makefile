@@ -1,7 +1,7 @@
 
 CC=gcc
-CFLAGS= -Wall -pthread #-g -DDEBUG
-LDFLAGS= -lpthread -g
+CFLAGS= -Wall -std=gnu99 -pthread #-g -DDEBUG
+LDFLAGS= -std=gnu99 -lpthread #-g
 
 all: tftp_server run
 
