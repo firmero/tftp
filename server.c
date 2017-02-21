@@ -129,6 +129,7 @@ main(int argc, char **argv)
 {
 	char *portstr = NULL;
 	int used_def_dir = 0;
+	int used_def_portstr = 1;
 
 	int ch;
 	extern int errno;
@@ -167,6 +168,7 @@ main(int argc, char **argv)
 				if (!isdigit(*c))
 					usage(argv[0]);
 			}
+			used_def_portstr = 0;
 			break;
 		default:
 			usage(argv[0]);
@@ -179,7 +181,6 @@ main(int argc, char **argv)
 	if (!dir) {
 		dir = DEFAULT_DIR;
 	} else
-		used_def_dir = 0;
 
 	if (socket == -1) {
 		return (ERROR_CANNOT_GET_SOCKET);
@@ -264,7 +265,7 @@ main(int argc, char **argv)
 	}
 	pthread_mutex_unlock(&qlist.mutex);
 
-	if (portstr)
+	if (!used_def_portstr)
 		free(portstr);
 
 	if (!used_def_dir)
