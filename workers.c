@@ -16,8 +16,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-pthread_mutex_t query_list_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 flist_t flist = {	.head = NULL, .tail = NULL,
 					.mutex = PTHREAD_MUTEX_INITIALIZER };
 

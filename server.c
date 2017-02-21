@@ -18,7 +18,8 @@
 #include "workers.h"
 
 // server root directory
-char *dir = "/tmp/";
+char *dir = NULL;
+
 volatile sig_atomic_t accept_query = 1;
 extern query_list_t qlist;
 
@@ -126,8 +127,8 @@ get_server_socket(const char *portstr)
 int
 main(int argc, char **argv)
 {
-
 	char *portstr = NULL;
+	int used_def_dir = 0;
 
 	int ch;
 	extern int errno;
@@ -173,7 +174,12 @@ main(int argc, char **argv)
 	}
 
 	int socket = portstr ?	get_server_socket(portstr):
-						get_server_socket(DEF_PORT);
+						get_server_socket(DEFAULT_PORT);
+
+	if (!dir) {
+		dir = DEFAULT_DIR;
+	} else
+		used_def_dir = 0;
 
 	if (socket == -1) {
 		return (ERROR_CANNOT_GET_SOCKET);
@@ -260,6 +266,9 @@ main(int argc, char **argv)
 
 	if (portstr)
 		free(portstr);
+
+	if (!used_def_dir)
+		free(dir);
 
 #ifdef DEBUG
 	fprintf(stderr, "===== tftp server exit ======\n");

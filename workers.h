@@ -12,7 +12,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#define	DEF_PORT "69"
+// default args
+#define	DEFAULT_PORT "69"
+#define	DEFAULT_DIR  "/tmp/"
 
 // for query packet
 #define	BUFF_LEN 1024
@@ -107,7 +109,6 @@ void remove_node(node_t *node_p, query_list_t *qlist);
 
 void cleanup(node_t *node_p, char *filename, char *mode, query_list_t *qlist);
 
-// signal when is node unregistred from list
 extern char	*dir;
 
 
