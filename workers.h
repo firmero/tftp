@@ -69,7 +69,7 @@ struct error_t {
 
 // control thread uses list of queries,
 // query is represent by this node
-struct node_tt {
+typedef struct node_tt {
 
     char *buff; // copy of whole packet except first 2 bytest (opcode)
     size_t	sz;
@@ -79,18 +79,16 @@ struct node_tt {
 
     struct node_tt *next;
     struct node_tt *prvs;
-};
-typedef struct node_tt node_t;
+} node_t;
 
-struct query_list_tt {
+typedef struct query_list_tt {
 
 	node_t *head;
 	node_t *tail;
 
 	pthread_mutex_t mutex;
 	pthread_cond_t query_finished;
-};
-typedef struct query_list_tt query_list_t;
+} query_list_t;
 
 void* rrq_serve(void *x);
 void* wrq_serve(void *x);

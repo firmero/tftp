@@ -4,17 +4,17 @@
 #include <pthread.h>
 
 // used as node in pending fds list
-struct fd_node_tt {
+typedef struct fd_node_tt {
 
     int fd;
 
     struct fd_node_tt *next;
-};
-typedef struct fd_node_tt fd_node_t;
+
+} fd_node_t;
 
 
 // represents a node in the list of files,
-struct fnode_tt {
+typedef struct fnode_tt {
 
 	// number of references
     size_t	cnt;
@@ -26,18 +26,16 @@ struct fnode_tt {
 
     struct fnode_tt *next;
     struct fnode_tt *prvs;
-};
-typedef struct fnode_tt fnode_t;
+} fnode_t;
 
-struct flist_tt {
+typedef struct flist_tt {
 
 	fnode_t *head;
 	fnode_t *tail;
 
 	pthread_mutex_t mutex;
 
-};
-typedef struct flist_tt flist_t;
+} flist_t;
 
 // return value:
 // 1 means it was the last occurrence in list, 0 not the last
