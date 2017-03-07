@@ -323,7 +323,8 @@ rrq_serve(void *p_node)
 	char *filename = NULL;
 	char *mode = NULL;
 
-	// filename and mode release function cleanup(node_p, filename, mode)
+	// filename and mode are released
+	// by function cleanup(node_p, filename, mode)
 	if (!get_filename_mode(node_p->buff, node_p->sz, &filename, &mode)) {
 		remove_node(node_p, &qlist);
 		return (NULL);
@@ -343,6 +344,7 @@ rrq_serve(void *p_node)
 		send_err(socket, node_p->saddr_st, ERR_NOTDEFINED,
 				"Server support only octet mode transmission.");
 		remove_node(node_p, &qlist);
+		close(socket);
 		return (NULL);
 	}
 
