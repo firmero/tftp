@@ -231,7 +231,7 @@ main(int argc, char **argv)
 
 			node_t *node_p;
 			node_p	= create_node(recv_sz - OPCODE_SIZE,
-						buff + OPCODE_SIZE, sockaddr);
+						buff + OPCODE_SIZE, &sockaddr);
 			append_node(node_p, &qlist);
 
 			if (pthread_create(&node_p->tid, &attrbs,
@@ -244,7 +244,7 @@ main(int argc, char **argv)
 		case OPCODE_WRQ:
 
 			node_p = create_node(recv_sz - OPCODE_SIZE,
-						buff + OPCODE_SIZE, sockaddr);
+						buff + OPCODE_SIZE, &sockaddr);
 			append_node(node_p, &qlist);
 
 			if (pthread_create(&node_p->tid, &attrbs,

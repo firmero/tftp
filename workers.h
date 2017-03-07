@@ -101,7 +101,7 @@ print_info(const struct sockaddr_storage *saddr_st,
 void dump(const node_t *);
 void append_node(node_t *node_p, query_list_t *qlist);
 
-node_t *create_node(size_t sz, const char *buff, struct sockaddr_storage ca);
+node_t *create_node(size_t sz, const char *buff, struct sockaddr_storage *ca);
 void free_node(node_t *node_p);
 void remove_node(node_t *node_p, query_list_t *qlist);
 

@@ -24,7 +24,7 @@ append_node(node_t *node_p, query_list_t *qlist)
 
 // buff has whole packet except OPCODE_SIZE bytes
 node_t *
-create_node(size_t sz, const char *buff, struct sockaddr_storage ca)
+create_node(size_t sz, const char *buff, struct sockaddr_storage *ca)
 {
 	node_t *node_p = malloc(sizeof (node_t));
 
@@ -33,7 +33,7 @@ create_node(size_t sz, const char *buff, struct sockaddr_storage ca)
 	// release by free_node()
 	memcpy(node_p->buff, buff, sz);
 
-	node_p->saddr_st = ca;
+	node_p->saddr_st = *ca;
 	// init there, not in append_node()
 	node_p->next = NULL;
 	node_p->prvs = NULL;

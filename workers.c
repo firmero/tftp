@@ -157,7 +157,7 @@ get_socket()
 }
 
 void
-send_ack(int fd, struct sockaddr_storage saddr_st, uint16_t block_number)
+send_ack(int fd, struct sockaddr_storage *saddr_st, uint16_t block_number)
 {
 	char ack[ACK_SIZE];
 	uint16_t opcode = htons(OPCODE_ACK);
@@ -166,13 +166,13 @@ send_ack(int fd, struct sockaddr_storage saddr_st, uint16_t block_number)
 	memcpy(ack, &opcode, OPCODE_SIZE);
 	memcpy(ack + OPCODE_SIZE, &nbn, BLOCK_NUM_SIZE);
 
-	if (sendto(fd, ack, ACK_SIZE, 0, (struct sockaddr *)&saddr_st,
-				sizeof (saddr_st)) == -1)
+	if (sendto(fd, ack, ACK_SIZE, 0, (struct sockaddr *)saddr_st,
+				sizeof (*saddr_st)) == -1)
 		warn("couldn't send ack packet");
 }
 
 void
-send_err(int fd, struct sockaddr_storage saddr_st,
+send_err(int fd, struct sockaddr_storage *saddr_st,
 			enum TFTP_ERROR error, const char *msg)
 {
 	if (!msg)
@@ -191,8 +191,8 @@ send_err(int fd, struct sockaddr_storage saddr_st,
 	memcpy(buff + OPCODE_SIZE, &errcode, ERROR_CODE_SIZE);
 	memcpy(buff + header_sz, msg, sz);
 
-	if (sendto(fd, buff, sz + header_sz, 0, (struct sockaddr *)&saddr_st,
-				sizeof (saddr_st)) == -1) {
+	if (sendto(fd, buff, sz + header_sz, 0, (struct sockaddr *)saddr_st,
+				sizeof (*saddr_st)) == -1) {
 		warn("couldn't send error packet");
 	}
 
@@ -201,7 +201,7 @@ send_err(int fd, struct sockaddr_storage saddr_st,
 
 int
 send_block(int file_fd, int socket, char *buff, int block_number,
-			const node_t *node_p, struct pollfd fds, int block_size)
+		    const node_t *node_p, struct pollfd *fds, int block_size)
 {
 	int r, sum_read = 0;
 	do {
@@ -240,7 +240,7 @@ send_block(int file_fd, int socket, char *buff, int block_number,
 	uint16_t ack_block_number;
 
 	do {
-		int poll_events = poll(&fds, 1, timeout_ms_rrq);
+		int poll_events = poll(fds, 1, timeout_ms_rrq);
 
 		switch (poll_events) {
 		case -1:
@@ -341,7 +341,7 @@ rrq_serve(void *p_node)
 #endif
 
 	if (strcmp(mode, "octet") != 0) {
-		send_err(socket, node_p->saddr_st, ERR_NOTDEFINED,
+		send_err(socket, &node_p->saddr_st, ERR_NOTDEFINED,
 				"Server support only octet mode transmission.");
 		remove_node(node_p, &qlist);
 		close(socket);
@@ -368,10 +368,10 @@ rrq_serve(void *p_node)
 	if (file_fd == -1) {
 
 		if (errno == ENOENT)
-			send_err(socket, node_p->saddr_st,
+			send_err(socket, &node_p->saddr_st,
 					ERR_FILENFOUND, NULL);
 		else
-			send_err(socket, node_p->saddr_st,
+			send_err(socket, &node_p->saddr_st,
 					ERR_NOTDEFINED, strerror(errno));
 
 		close(socket);
@@ -397,7 +397,8 @@ rrq_serve(void *p_node)
 	for (block_number = 1; block_number <= p; block_number++) {
 
 		if (!send_block(file_fd, socket, buff, block_number,
-						node_p, poll_fds, BLOCK_SIZE)) {
+					node_p, &poll_fds, BLOCK_SIZE)) {
+
 			pthread_rwlock_unlock(rwlock);
 			close_file(file_fd, filename);
 			cleanup(node_p, filename, mode, &qlist);
@@ -410,7 +411,7 @@ rrq_serve(void *p_node)
 	// the last block must have size < BLOCK_SIZE,
 	// so if size of file is multiple of BLOCK_SIZE,
 	// then is needed to send packet with empty payload
-	send_block(file_fd, socket, buff, block_number, node_p, poll_fds, m);
+	send_block(file_fd, socket, buff, block_number, node_p, &poll_fds, m);
 	pthread_rwlock_unlock(rwlock);
 
 #ifdef DEBUG
@@ -472,10 +473,10 @@ void *wrq_serve(void *p_node)	{
     extern int errno;
 	if (file_fd == -1) {
 		if (errno == EACCES)
-			send_err(socket, node_p->saddr_st,
+			send_err(socket, &node_p->saddr_st,
 					ERR_ACCESSVIOLATION, NULL);
 		else
-			send_err(socket, node_p->saddr_st,
+			send_err(socket, &node_p->saddr_st,
 					ERR_NOTDEFINED, strerror(errno));
 		close(socket);
 		cleanup(node_p, filename, mode, &qlist);
@@ -488,7 +489,7 @@ void *wrq_serve(void *p_node)	{
 
 	uint16_t block_number = 0;
 
-	send_ack(socket, node_p->saddr_st, block_number);
+	send_ack(socket, &node_p->saddr_st, block_number);
     int done = 0;
 	int nth_timeout = 1;
 	int receive_sz;
@@ -506,7 +507,7 @@ void *wrq_serve(void *p_node)	{
 
 			if (nth_timeout < timeout_cnt_wrq) {
 				// retransmit
-				send_ack(socket, node_p->saddr_st,
+				send_ack(socket, &node_p->saddr_st,
 							block_number);
 
 				nth_timeout++;
@@ -547,11 +548,11 @@ void *wrq_serve(void *p_node)	{
 				if (w < 0) {
 					if (errno == EDQUOT)
 						send_err(socket,
-							node_p->saddr_st,
+							&node_p->saddr_st,
 							ERR_DISKFULL, NULL);
 					else
 						send_err(socket,
-							node_p->saddr_st,
+							&node_p->saddr_st,
 							ERR_NOTDEFINED,
 							strerror(errno));
 
@@ -564,7 +565,7 @@ void *wrq_serve(void *p_node)	{
 
 				pthread_rwlock_unlock(rwlock);
 
-				send_ack(socket, node_p->saddr_st,
+				send_ack(socket, &node_p->saddr_st,
 							block_number);
 
 				// if got final block
