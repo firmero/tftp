@@ -123,24 +123,18 @@ flist_rm_file(int fd, const char *filename, flist_t *flist)
 	}
 
 	// rm node
-	if (fnode_p->next && fnode_p->prvs) {
-		fnode_p->prvs->next = fnode_p->next;
+	if (fnode_p->next)
 		fnode_p->next->prvs = fnode_p->prvs;
-		free_fnode(fnode_p);
-	} else if (!fnode_p->prvs) {
-		if (!fnode_p->next) {
-			free_fnode(fnode_p);
-			flist->head = NULL;
-		} else {
-			fnode_p->next->prvs = NULL;
-			flist->head = fnode_p->next;
-			free_fnode(fnode_p);
-		}
-	} else {
-		fnode_p->prvs->next = NULL;
+	else
 		flist->tail = fnode_p->prvs;
-		free_fnode(fnode_p);
-	}
+
+	if (fnode_p->prvs)
+		fnode_p->prvs->next = fnode_p->next;
+	else
+		flist->head = fnode_p->next;
+
+	free_fnode(fnode_p);
+
 	pthread_mutex_unlock(fmutex);
 
 	return (1);
