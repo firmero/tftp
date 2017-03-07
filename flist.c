@@ -6,59 +6,68 @@
 #include <string.h>
 #include <unistd.h>
 
-pthread_rwlock_t *
+fnode_t *
+flist_find_filename(const char *filename, flist_t *flist)
+{
+	if (!flist->head)
+		return (NULL);
+
+	fnode_t *fnode_p = flist->head;
+
+	do {
+		if (strcmp(fnode_p->filename, filename) == 0)
+		break;
+
+		fnode_p = fnode_p->next;
+
+	} while (fnode_p);
+
+	return (fnode_p);
+}
+
+fnode_t *
 flist_add_file(const char *filename, flist_t *flist)
 {
-	fnode_t *fnode_p = NULL;
-
 	pthread_mutex_t *fmutex = &flist->mutex;
 
 	pthread_mutex_lock(fmutex);
-	if (!flist->head) {
+
+	fnode_t *fnode_p = flist_find_filename(filename, flist);
+
+	if (fnode_p) {
+
+		fnode_p->cnt++;
+
+	} else {
 
 		fnode_p = malloc(sizeof (fnode_t));
 
-		flist->head = fnode_p;
-		flist->tail = fnode_p;
+		fnode_p->filename = strdup(filename);
+		fnode_p->cnt	= 1;
 
-		flist->tail->next    = NULL;
-		flist->tail->prvs    = NULL;
-		flist->tail->fd_list = NULL;
+		fnode_p->next	 = NULL;
+		fnode_p->fd_list = NULL;
 
-		flist->tail->cnt		= 1;
-		flist->tail->filename = strdup(filename);
-		pthread_rwlock_init(&flist->tail->rw_lock, NULL);
-	} else {
+		pthread_rwlock_init(&fnode_p->rw_lock, NULL);
 
-		fnode_p = flist->head;
-		do {
-			if (strcmp(fnode_p->filename, filename) == 0)
-			break;
+		if (!flist->head) {
 
-			fnode_p = fnode_p->next;
+			fnode_p->prvs    = NULL;
 
-		} while (fnode_p);
+			flist->head = fnode_p;
+			flist->tail = fnode_p;
 
-		if (!fnode_p) { // not found, create new
-
-			fnode_p = malloc(sizeof (fnode_t));
-
-			fnode_p->cnt	= 1;
-			fnode_p->filename = strdup(filename);
-			pthread_rwlock_init(&fnode_p->rw_lock, NULL);
+		} else {
 
 			fnode_p->prvs    = flist->tail;
-			fnode_p->next	 = NULL;
-			fnode_p->fd_list = NULL;
 			flist->tail->next	= fnode_p;
 			flist->tail		= fnode_p;
-		} else {
-			fnode_p->cnt++;
 		}
 	}
+
 	pthread_mutex_unlock(fmutex);
 
-	return (&fnode_p->rw_lock);
+	return (fnode_p);
 }
 
 void
@@ -78,7 +87,7 @@ free_fnode(fnode_t *fnode_p)
 		free(tmp);
 	}
 
-	free(fnode_p);
+	// free(fnode_p);
 }
 
 // 1 means it was the last occurrence in list, 0 not the last

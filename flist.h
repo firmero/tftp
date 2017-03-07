@@ -41,6 +41,6 @@ typedef struct flist_tt {
 // 1 means it was the last occurrence in list, 0 not the last
 int flist_rm_file(int fd, const char *filename, flist_t *);
 
-pthread_rwlock_t *flist_add_file(const char *filename, flist_t *);
+fnode_t *flist_add_file(const char *filename, flist_t *);
 
 #endif

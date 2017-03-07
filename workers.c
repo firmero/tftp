@@ -381,7 +381,7 @@ rrq_serve(void *p_node)
 
 	// ========= file_fd
 
-	pthread_rwlock_t *rwlock = flist_add_file(filename, &flist);
+	pthread_rwlock_t *rwlock = &flist_add_file(filename, &flist)->rw_lock;
 
 	int file_sz = lseek(file_fd, 0, SEEK_END);
 	lseek(file_fd, 0, SEEK_SET);
@@ -484,7 +484,7 @@ void *wrq_serve(void *p_node)	{
 		return (NULL);
 	}
 
-	pthread_rwlock_t *rwlock = flist_add_file(filename, &flist);
+	pthread_rwlock_t *rwlock = &flist_add_file(filename, &flist)->rw_lock;
 
 	// ========= accept wrq
 
