@@ -66,7 +66,7 @@ close_file(int ffd, const char *filename)
 }
 
 // if success return 1, otherwise 0
-// expect NULL filename and mode
+// function expects NULL filename and mode
 int
 get_filename_mode(const char *buff, const size_t sz,
 			char **filename, char **mode)
@@ -438,7 +438,8 @@ void *wrq_serve(void *p_node)	{
 	char *filename = NULL;
 	char *mode = NULL;
 
-	// filename and mode release function cleanup(node_p, filename, mode)
+	// filename and mode are released
+	// by function cleanup(node_p, filename, mode)
 	if (!get_filename_mode(node_p->buff, node_p->sz, &filename, &mode)) {
 		remove_node(node_p, &qlist);
 		return (NULL);
@@ -523,7 +524,8 @@ void *wrq_serve(void *p_node)	{
 				break;
 			}
 
-			get_opcode = ((uint8_t)buff[0] << 8) | (uint8_t)buff[1];
+			get_opcode = ((uint8_t)buff[0] << 8)
+							| (uint8_t)buff[1];
 
 			get_block_number = (uint8_t)buff[3]
 						| ((uint8_t)buff[2] << 8);

@@ -18,7 +18,7 @@
 #include "workers.h"
 
 // server root directory
-char *dir = NULL;
+char *dir = DEFAULT_DIR;
 
 volatile sig_atomic_t accept_query = 1;
 extern query_list_t qlist;
@@ -128,13 +128,20 @@ int
 main(int argc, char **argv)
 {
 	char *portstr = NULL;
-	int used_def_dir = 0;
-	int used_def_portstr = 1;
+	// default or points to argv
+
+	int dirname_allocated = 0;
 
 	int ch;
 	extern int errno;
 
 	while ((ch = getopt_long(argc, argv, "hp:d:", longopts, NULL)) != -1) {
+
+		// empty string
+		if (optarg && !optarg[0]) {
+			usage(argv[0]);
+		}
+
 		switch (ch) {
 		case 'd':;
 
@@ -146,9 +153,10 @@ main(int argc, char **argv)
 				dir[arg_length] = '/';
 				dir[arg_length + 1] = '\0';
 				// maybe better just append '/', while // ~ /
+				dirname_allocated = 1;
 			}
 			else
-				dir = strdup(optarg);
+				dir = optarg;
 
 			DIR *directory = opendir(dir);
 
@@ -162,25 +170,22 @@ main(int argc, char **argv)
 
 			break;
 		case 'p':
-			portstr = strdup(optarg);
+			portstr = optarg;
 			char *c;
 			for (c = portstr; *c; c++) {
 				if (!isdigit(*c))
 					usage(argv[0]);
 			}
-			used_def_portstr = 0;
 			break;
 		default:
 			usage(argv[0]);
 		}
 	}
+	if (optind < argc)
+		fprintf(stderr, "Ignoring trailing arguments!\n");
 
-	int socket = portstr ?	get_server_socket(portstr):
-						get_server_socket(DEFAULT_PORT);
-
-	if (!dir) {
-		dir = DEFAULT_DIR;
-	} else
+	int socket = portstr ? get_server_socket(portstr)
+		: get_server_socket(DEFAULT_PORT);
 
 	if (socket == -1) {
 		return (ERROR_CANNOT_GET_SOCKET);
@@ -265,11 +270,9 @@ main(int argc, char **argv)
 	}
 	pthread_mutex_unlock(&qlist.mutex);
 
-	if (!used_def_portstr)
-		free(portstr);
-
-	if (!used_def_dir)
+	if (dirname_allocated) {
 		free(dir);
+	}
 
 #ifdef DEBUG
 	fprintf(stderr, "===== tftp server exit ======\n");
