@@ -49,26 +49,19 @@ free_node(node_t *node_p)
 void
 remove_node(node_t *node_p, query_list_t *qlist)
 {
-
 	pthread_mutex_lock(&qlist->mutex);
-	if (node_p->next && node_p->prvs) {
-		node_p->prvs->next = node_p->next;
+
+	if (node_p->next)
 		node_p->next->prvs = node_p->prvs;
-		free_node(node_p);
-	} else if (!node_p->prvs) {
-		if (!node_p->next) {
-			free_node(node_p);
-			qlist->head = NULL;
-		} else {
-			node_p->next->prvs	= NULL;
-			qlist->head			= node_p->next;
-			free_node(node_p);
-		}
-	} else {
-		node_p->prvs->next	= NULL;
-		qlist->tail				= node_p->prvs;
-		free_node(node_p);
-	}
+	else
+		qlist->tail = node_p->prvs;
+
+	if (node_p->prvs)
+		node_p->prvs->next = node_p->next;
+	else
+		qlist->head = node_p->next;
+
+	free_node(node_p);
 
 	// if (qlist->head) dump(qlist->head);
 	pthread_cond_signal(&qlist->query_finished);
