@@ -124,6 +124,25 @@ get_server_socket(const char *portstr)
 	return (fd);
 }
 
+void
+query_serve(char *recv_buff, int recv_sz,
+		struct sockaddr_storage *recv_sockaddr,
+		pthread_attr_t *thread_attrbs,
+		void *(*action) (void *))
+{
+	node_t *node_p;
+	node_p	= create_node(recv_sz - OPCODE_SIZE,
+				recv_buff + OPCODE_SIZE, recv_sockaddr);
+	append_node(node_p, &qlist);
+
+	if (pthread_create(&node_p->tid, thread_attrbs,
+				action, node_p) != 0) {
+		warn("pthread_create");
+		remove_node(node_p, &qlist);
+	}
+
+}
+
 int
 main(int argc, char **argv)
 {
@@ -234,30 +253,13 @@ main(int argc, char **argv)
 
 		case OPCODE_RRQ:;
 
-			node_t *node_p;
-			node_p	= create_node(recv_sz - OPCODE_SIZE,
-						buff + OPCODE_SIZE, &sockaddr);
-			append_node(node_p, &qlist);
-
-			if (pthread_create(&node_p->tid, &attrbs,
-						rrq_serve, node_p) != 0) {
-				warn("pthread_create");
-				remove_node(node_p, &qlist);
-			}
-
+			query_serve(buff, recv_sz, &sockaddr,
+					&attrbs, rrq_serve);
 			break;
 		case OPCODE_WRQ:
 
-			node_p = create_node(recv_sz - OPCODE_SIZE,
-						buff + OPCODE_SIZE, &sockaddr);
-			append_node(node_p, &qlist);
-
-			if (pthread_create(&node_p->tid, &attrbs,
-						wrq_serve, node_p) != 0) {
-				warn("pthread_create");
-				remove_node(node_p, &qlist);
-			}
-
+			query_serve(buff, recv_sz, &sockaddr,
+					&attrbs, wrq_serve);
 			break;
 		default:;
 			fprintf(stderr, "main:: packet has wrong opcode\n");
