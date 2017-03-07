@@ -222,9 +222,11 @@ send_block(int file_fd, int socket, char *buff, int block_number,
 	memcpy(buff, &opcode, OPCODE_SIZE);
 	memcpy(buff + OPCODE_SIZE, &nbn, BLOCK_NUM_SIZE);
 
-	sendto(socket, buff, block_size + SND_HDR_SIZE, 0,
+	if (sendto(socket, buff, block_size + SND_HDR_SIZE, 0,
 				(struct sockaddr *)&node_p->saddr_st,
-				sizeof (node_p->saddr_st));
+				sizeof (node_p->saddr_st)) == -1) {
+		warn("couldn't send first data packet");
+	}
 
 	// == wait for ack
 
@@ -248,9 +250,12 @@ send_block(int file_fd, int socket, char *buff, int block_number,
 			if (nth_timeout < timeout_cnt_rrq) {
 
 				// retransmit
-			sendto(socket, buff, block_size + SND_HDR_SIZE, 0,
+			if (sendto(socket, buff, block_size + SND_HDR_SIZE, 0,
 				(struct sockaddr *)&node_p->saddr_st,
-				sizeof (node_p->saddr_st));
+				sizeof (node_p->saddr_st)) == -1) {
+				warn("couldn't send retransmit data packet");
+			}
+
 
 				nth_timeout++;
 			} else // timeouts runs out
