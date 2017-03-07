@@ -270,10 +270,12 @@ send_block(int file_fd, int socket, char *buff, int block_number,
 			if (receive_sz != ACK_SIZE)
 				return (0);
 
-			ack_opcode = ((uint8_t)ack[0] << 8) | (uint8_t)ack[1];
+			ack_opcode = ntohs(((uint8_t)ack[1] << 8)
+							| (uint8_t)ack[0]);
 
-			ack_block_number = (uint8_t)ack[3]
-						    | ((uint8_t)ack[2] << 8);
+			ack_block_number = ntohs((uint8_t)ack[2]
+						    | ((uint8_t)ack[3] << 8));
+
 
 			if (ack_opcode != OPCODE_ACK)  // ignore, dupl
 				break;
@@ -524,11 +526,11 @@ void *wrq_serve(void *p_node)	{
 				break;
 			}
 
-			get_opcode = ((uint8_t)buff[0] << 8)
-							| (uint8_t)buff[1];
+			get_opcode = ntohs(((uint8_t)buff[1] << 8)
+							| (uint8_t)buff[0]);
 
-			get_block_number = (uint8_t)buff[3]
-						| ((uint8_t)buff[2] << 8);
+			get_block_number = ntohs((uint8_t)buff[2]
+						| ((uint8_t)buff[3] << 8));
 
 			if (get_opcode != OPCODE_DATA) { // ignore
 				break;
