@@ -222,9 +222,7 @@ send_block(int file_fd, int socket, char *buff, int block_number,
 	memcpy(buff, &opcode, OPCODE_SIZE);
 	memcpy(buff + OPCODE_SIZE, &nbn, BLOCK_NUM_SIZE);
 
-	int  header_sz = OPCODE_SIZE + BLOCK_NUM_SIZE;
-
-	sendto(socket, buff, block_size + header_sz, 0,
+	sendto(socket, buff, block_size + SND_HDR_SIZE, 0,
 				(struct sockaddr *)&node_p->saddr_st,
 				sizeof (node_p->saddr_st));
 
@@ -250,7 +248,7 @@ send_block(int file_fd, int socket, char *buff, int block_number,
 			if (nth_timeout < timeout_cnt_rrq) {
 
 				// retransmit
-			sendto(socket, buff, block_size + header_sz, 0,
+			sendto(socket, buff, block_size + SND_HDR_SIZE, 0,
 				(struct sockaddr *)&node_p->saddr_st,
 				sizeof (node_p->saddr_st));
 
