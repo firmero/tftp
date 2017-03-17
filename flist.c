@@ -40,13 +40,23 @@ flist_add_file(const char *filename, flist_t *flist)
 
 		fnode_p = malloc(sizeof (fnode_t));
 
+		int lock_error = pthread_rwlock_init(&fnode_p->rw_lock, NULL);
+		if (lock_error != 0) {
+
+			free(fnode_p);
+
+			fprintf(stderr, "rwlock_init in flist_add_file: %s\n",
+					strerror(lock_error));
+
+			return (NULL);
+		}
+
 		fnode_p->filename = strdup(filename);
 		fnode_p->cnt	= 1;
 
 		fnode_p->next	 = NULL;
 		fnode_p->fd_list = NULL;
 
-		pthread_rwlock_init(&fnode_p->rw_lock, NULL);
 
 		if (!flist->head) {
 

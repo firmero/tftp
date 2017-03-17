@@ -56,7 +56,6 @@ dump(const node_t *node_p)
 
 	printf("^^^^^^ end of dump\n");
 }
-
 void
 close_file(int ffd, const char *filename)
 {
@@ -383,7 +382,16 @@ rrq_serve(void *p_node)
 
 	// ========= file_fd
 
-	pthread_rwlock_t *rwlock = &flist_add_file(filename, &flist)->rw_lock;
+	fnode_t *fnode_p = flist_add_file(filename, &flist);
+	if (!fnode_p) {
+
+		send_err(socket, &node_p->saddr_st, ERR_NOTDEFINED,
+				"Server internal error");
+		close(socket);
+		cleanup(node_p, filename, mode, &qlist);
+		return (NULL);
+	}
+	pthread_rwlock_t *rwlock = &fnode_p->rw_lock;
 
 	int file_sz = lseek(file_fd, 0, SEEK_END);
 
@@ -391,14 +399,10 @@ rrq_serve(void *p_node)
 			file_sz == -1) {
 
 		warn("lseek in rrq_serve");
-
 		send_err(socket, &node_p->saddr_st, ERR_NOTDEFINED,
 				"Error in lseek on server side");
 
-		close_file(file_fd, filename);
-		cleanup(node_p, filename, mode, &qlist);
-		close(socket);
-		return (NULL);
+		goto CLEAN;
 	}
 
 	int p, m;
@@ -406,7 +410,20 @@ rrq_serve(void *p_node)
 	p = file_sz / BLOCK_SIZE;
 	m = file_sz % BLOCK_SIZE;
 
-	pthread_rwlock_rdlock(rwlock);
+	int lock_error = pthread_rwlock_rdlock(rwlock);
+	// Linux(3) may fail -> EAGAIN:
+	// The read lock could not be acquired because the maximum
+	// number of read locks for rwlock has been exceeded.
+	if (lock_error != 0) {
+
+		fprintf(stderr, "rdlock in rrq_serve: %s\n",
+				strerror(lock_error));
+
+		send_err(socket, &node_p->saddr_st, ERR_NOTDEFINED,
+				"Error while acquiring rdlock on server side");
+
+		goto CLEAN;
+	}
 
 	uint16_t block_number;
 	for (block_number = 1; block_number <= p; block_number++) {
@@ -415,10 +432,7 @@ rrq_serve(void *p_node)
 					node_p, &poll_fds, BLOCK_SIZE)) {
 
 			pthread_rwlock_unlock(rwlock);
-			close_file(file_fd, filename);
-			cleanup(node_p, filename, mode, &qlist);
-			close(socket);
-			return (NULL);
+			goto CLEAN;
 		}
 	}
 
@@ -432,7 +446,7 @@ rrq_serve(void *p_node)
 #ifdef DEBUG
 	char *dbg_filename = strdup(filename);
 #endif
-
+CLEAN:
 	close_file(file_fd, filename);
 	cleanup(node_p, filename, mode, &qlist);
 	close(socket);
@@ -499,7 +513,16 @@ void *wrq_serve(void *p_node)	{
 		return (NULL);
 	}
 
-	pthread_rwlock_t *rwlock = &flist_add_file(filename, &flist)->rw_lock;
+	fnode_t *fnode_p = flist_add_file(filename, &flist);
+	if (!fnode_p) {
+
+		send_err(socket, &node_p->saddr_st, ERR_NOTDEFINED,
+				"Server internal error");
+		close(socket);
+		cleanup(node_p, filename, mode, &qlist);
+		return (NULL);
+	}
+	pthread_rwlock_t *rwlock = &fnode_p->rw_lock;
 
 	// ========= accept wrq
 
@@ -574,7 +597,7 @@ void *wrq_serve(void *p_node)	{
 							strerror(errno));
 
 					pthread_rwlock_unlock(rwlock);
-					goto CL;
+					goto CLEAN;
 				}
 				sum_write += w;
 
@@ -598,7 +621,7 @@ void *wrq_serve(void *p_node)	{
 		}
 	} while (!done);
 
-CL:
+CLEAN:
 	;
 #ifdef DEBUG
 	char * dbg_filename = strdup(filename);
