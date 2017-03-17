@@ -146,7 +146,7 @@ query_serve(char *recv_buff, int recv_sz,
 int
 main(int argc, char **argv)
 {
-	char *portstr = NULL;
+	char *portstr = DEFAULT_PORT;
 	// default or points to argv
 
 	int dirname_allocated = 0;
@@ -203,8 +203,7 @@ main(int argc, char **argv)
 	if (optind < argc)
 		fprintf(stderr, "Ignoring trailing arguments!\n");
 
-	int socket = portstr ? get_server_socket(portstr)
-		: get_server_socket(DEFAULT_PORT);
+	int socket = get_server_socket(portstr);
 
 	if (socket == -1) {
 		return (ERROR_CANNOT_GET_SOCKET);
