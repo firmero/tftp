@@ -386,7 +386,20 @@ rrq_serve(void *p_node)
 	pthread_rwlock_t *rwlock = &flist_add_file(filename, &flist)->rw_lock;
 
 	int file_sz = lseek(file_fd, 0, SEEK_END);
-	lseek(file_fd, 0, SEEK_SET);
+
+	if ((lseek(file_fd, 0, SEEK_SET) == -1) ||
+			file_sz == -1) {
+
+		warn("lseek in rrq_serve");
+
+		send_err(socket, &node_p->saddr_st, ERR_NOTDEFINED,
+				"Error in lseek on server side");
+
+		close_file(file_fd, filename);
+		cleanup(node_p, filename, mode, &qlist);
+		close(socket);
+		return (NULL);
+	}
 
 	int p, m;
 
