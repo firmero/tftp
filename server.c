@@ -222,6 +222,7 @@ main(int argc, char **argv)
 
 	socklen_t sockaddr_sz = sizeof (sockaddr);
 	char buff[BUFF_LEN + 1];
+	uint16_t tmp;
 
 	while (accept_query) {
 
@@ -235,7 +236,8 @@ main(int argc, char **argv)
 		if (recv_sz < 2) // nonvalid packet
 			continue;
 
-		uint16_t opcode = ((uint8_t)buff[0] << 8) | (uint8_t) buff[1];
+		memcpy(&tmp, buff, 2);
+		uint16_t opcode = ntohs(tmp);
 
 		pthread_attr_t attrbs;
 		if (pthread_attr_init(&attrbs) != 0) {

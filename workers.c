@@ -254,6 +254,7 @@ send_block(int file_fd, int socket, char *buff, int block_number,
 	char ack[ACK_SIZE]; // 2B opcode, 2B block number
 	int receive_sz;
 
+	uint16_t tmp;
 	uint16_t ack_opcode;
 	uint16_t ack_block_number;
 
@@ -288,12 +289,11 @@ send_block(int file_fd, int socket, char *buff, int block_number,
 			if (receive_sz != ACK_SIZE)
 				return (0);
 
-			ack_opcode = ntohs(((uint8_t)ack[1] << 8)
-							| (uint8_t)ack[0]);
+			memcpy(&tmp, ack, 2);
+			ack_opcode = ntohs(tmp);
 
-			ack_block_number = ntohs((uint8_t)ack[2]
-						    | ((uint8_t)ack[3] << 8));
-
+			memcpy(&tmp, ack + 2, 2);
+			ack_block_number = ntohs(tmp);
 
 			if (ack_opcode != OPCODE_ACK)  // ignore, dupl
 				break;
@@ -376,11 +376,11 @@ rrq_serve(void *p_node)
 	poll_fds.fd = socket;
 	poll_fds.events = POLLIN;
 
-	char *tmp = malloc(strlen(filename) + strlen(dir) + 1);
-	strcpy(tmp, dir);
-	strcat(tmp, filename);
+	char *tmp_str = malloc(strlen(filename) + strlen(dir) + 1);
+	strcpy(tmp_str, dir);
+	strcat(tmp_str, filename);
 	free(filename);
-	filename = tmp;
+	filename = tmp_str;
 
 	int file_fd = open(filename, O_RDONLY);
 
@@ -512,11 +512,11 @@ void *wrq_serve(void *p_node)	{
 	poll_fds.fd = socket;
     poll_fds.events = POLLIN;
 
-	char *tmp = malloc(strlen(filename) + strlen(dir) + 1);
-	strcpy(tmp, dir);
-    strcat(tmp, filename);
+	char *tmp_str = malloc(strlen(filename) + strlen(dir) + 1);
+	strcpy(tmp_str, dir);
+    strcat(tmp_str, filename);
 	free(filename);
-	filename = tmp;
+	filename = tmp_str;
 
 	int file_fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     extern int errno;
@@ -552,7 +552,9 @@ void *wrq_serve(void *p_node)	{
 	int nth_timeout = 1;
 	int receive_sz;
 
-	uint16_t get_opcode, get_block_number;
+	uint16_t get_opcode;
+	uint16_t get_block_number;
+	uint16_t tmp;
 
     do {
 		int poll_events = poll(&poll_fds, 1, timeout_ms_wrq);
@@ -581,11 +583,11 @@ void *wrq_serve(void *p_node)	{
 				break;
 			}
 
-			get_opcode = ntohs(((uint8_t)buff[1] << 8)
-							| (uint8_t)buff[0]);
+			memcpy(&tmp, buff, 2);
+			get_opcode = ntohs(tmp);
 
-			get_block_number = ntohs((uint8_t)buff[2]
-						| ((uint8_t)buff[3] << 8));
+			memcpy(&tmp, buff + 2, 2);
+			get_block_number = ntohs(tmp);
 
 			if (get_opcode != OPCODE_DATA) { // ignore
 				break;
