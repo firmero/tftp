@@ -9,19 +9,17 @@
 fnode_t *
 flist_find_filename(const char *filename, flist_t *flist)
 {
-	if (!flist->head)
-		return (NULL);
-
 	fnode_t *fnode_p = flist->head;
 
-	do {
+	while (fnode_p) {
+
 		if (strcmp(fnode_p->filename, filename) == 0)
-		break;
+			break;
 
 		fnode_p = fnode_p->next;
+	}
 
-	} while (fnode_p);
-
+	// returns NULL if not found
 	return (fnode_p);
 }
 
