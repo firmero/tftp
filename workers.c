@@ -156,6 +156,29 @@ get_socket()
 }
 
 void
+try_sendto(int fd, char *buff, int buff_sz, struct sockaddr_storage *saddr_st)
+{
+	int ok = -1;
+	int cnt = 0;
+
+	do {
+
+		ok = sendto(fd, buff, buff_sz, 0, (struct sockaddr *)saddr_st,
+						sizeof (*saddr_st));
+		if (ok != -1)
+			return;
+		else
+			ok = errno;
+
+		poll(NULL, 0, 200);
+		cnt++;
+
+	} while (cnt < 5);
+
+	fprintf(stderr, "Sendto in try_sendto: %s\n", strerror(ok));
+}
+
+void
 send_ack(int fd, struct sockaddr_storage *saddr_st, uint16_t block_number)
 {
 	char ack[ACK_SIZE];
@@ -165,9 +188,7 @@ send_ack(int fd, struct sockaddr_storage *saddr_st, uint16_t block_number)
 	memcpy(ack, &opcode, OPCODE_SIZE);
 	memcpy(ack + OPCODE_SIZE, &nbn, BLOCK_NUM_SIZE);
 
-	if (sendto(fd, ack, ACK_SIZE, 0, (struct sockaddr *)saddr_st,
-				sizeof (*saddr_st)) == -1)
-		warn("couldn't send ack packet");
+	try_sendto(fd, ack, ACK_SIZE, saddr_st);
 }
 
 void
@@ -190,10 +211,7 @@ send_err(int fd, struct sockaddr_storage *saddr_st,
 	memcpy(buff + OPCODE_SIZE, &errcode, ERROR_CODE_SIZE);
 	memcpy(buff + header_sz, msg, sz);
 
-	if (sendto(fd, buff, sz + header_sz, 0, (struct sockaddr *)saddr_st,
-				sizeof (*saddr_st)) == -1) {
-		warn("couldn't send error packet");
-	}
+	try_sendto(fd, buff, sz + header_sz, saddr_st);
 
 	free(buff);
 }
