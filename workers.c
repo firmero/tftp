@@ -221,13 +221,14 @@ send_block(int file_fd, int socket, char *buff, int block_number,
 	memcpy(buff, &opcode, OPCODE_SIZE);
 	memcpy(buff + OPCODE_SIZE, &nbn, BLOCK_NUM_SIZE);
 
-	if (sendto(socket, buff, block_size + SND_HDR_SIZE, 0,
+	// may not be successful
+	sendto(socket, buff, block_size + SND_HDR_SIZE, 0,
 				(struct sockaddr *)&node_p->saddr_st,
-				sizeof (node_p->saddr_st)) == -1) {
-		warn("couldn't send first data packet");
-	}
+				sizeof (node_p->saddr_st));
 
-	// == wait for ack
+	// ==== wait for ack, if timeout then retransmit data,
+	// if previous sendto failed, then data will be retransmited
+	// after timeout
 
 	int done = 0;
 	int nth_timeout = 1;
