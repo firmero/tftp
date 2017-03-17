@@ -352,7 +352,7 @@ rrq_serve(void *p_node)
 
 	int socket = get_socket();
 	if (socket == -1) {
-		remove_node(node_p, &qlist);
+		cleanup(node_p, filename, mode, &qlist);
 		return (NULL);
 	}
 
@@ -495,7 +495,7 @@ void *wrq_serve(void *p_node)	{
 
 	int socket = get_socket();
 	if (socket == -1) {
-		remove_node(node_p, &qlist);
+		cleanup(node_p, filename, mode, &qlist);
 		return (NULL);
 	}
 
