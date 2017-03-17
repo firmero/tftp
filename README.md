@@ -29,10 +29,10 @@ variable (see signals handling)
 * after parsing packet and having filename's fd, the filename is registred in flist
 * flist has global mutex and has two method: flist\_add\_file and flist\_rm\_file
 * flist node should has items as filename, rw\_lock and cnt (as count references)  
-but also list of fd waiting for closing for that filename (the consequence of using  
-rw\_locks)
-* the fd for filename in flist is closed if cnt is 1, if cnt is greater, then fd is  
-appended to list of waiting fd
+but ~~also list of fd waiting for closing for that filename (the consequence of using  
+rw\_locks)~~
+* ~~the fd for filename in flist is closed if cnt is 1, if cnt is greater, then fd is  
+appended to list of waiting fd~~
 
 #### signals handling:
 * catching signals are SIGINT and SIGTERM
