@@ -99,18 +99,7 @@ flist_rm_file(int fd, const char *filename, flist_t *flist)
 	pthread_mutex_lock(fmutex);
 
 	assert(flist->head);
-
-	fnode_t *fnode_p = flist->head;
-
-	do {
-		if (strcmp(fnode_p->filename, filename) == 0) {
-			break;
-		}
-
-		fnode_p = fnode_p->next;
-
-	} while (fnode_p);
-
+	fnode_t *fnode_p = flist_find_filename(filename, flist);
 	// there must exist node with same filename
 	assert(fnode_p);
 
