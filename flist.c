@@ -95,7 +95,7 @@ free_fnode(fnode_t *fnode_p)
 		free(tmp);
 	}
 
-	// free(fnode_p);
+	free(fnode_p);
 }
 
 // 1 means it was the last occurrence in list, 0 not the last
