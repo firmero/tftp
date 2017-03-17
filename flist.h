@@ -4,13 +4,15 @@
 #include <pthread.h>
 
 // used as node in pending fds list
-typedef struct fd_node_tt {
-
-    int fd;
-
-    struct fd_node_tt *next;
-
-} fd_node_t;
+/*
+ * typedef struct fd_node_tt {
+ *
+ *     int fd;
+ *
+ *     struct fd_node_tt *next;
+ *
+ * } fd_node_t;
+ */
 
 
 // represents a node in the list of files,
@@ -22,7 +24,7 @@ typedef struct fnode_tt {
     pthread_rwlock_t rw_lock;
 
 	// pending fds, waiting for close, consenquence of using rwlocks
-    fd_node_t *fd_list;
+	// fd_node_t *fd_list;
 
     struct fnode_tt *next;
     struct fnode_tt *prvs;

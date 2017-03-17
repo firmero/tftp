@@ -55,7 +55,7 @@ flist_add_file(const char *filename, flist_t *flist)
 		fnode_p->cnt	= 1;
 
 		fnode_p->next	 = NULL;
-		fnode_p->fd_list = NULL;
+		// fnode_p->fd_list = NULL;
 
 
 		if (!flist->head) {
@@ -84,23 +84,23 @@ free_fnode(fnode_t *fnode_p)
 	free(fnode_p->filename);
 	pthread_rwlock_destroy(&fnode_p->rw_lock);
 
-	fd_node_t *fd_node_p = fnode_p->fd_list;
-
-	while (fd_node_p) {
-		fd_node_t *tmp = fd_node_p;
-
-		close(fd_node_p->fd);
-
-		fd_node_p = fd_node_p->next;
-		free(tmp);
-	}
+	/*
+	 * fd_node_t *fd_node_p = fnode_p->fd_list;
+	 * while (fd_node_p) {
+	 *	fd_node_t *tmp = fd_node_p;
+	 *
+	 *	close(fd_node_p->fd);
+	 *
+	 *  fd_node_p = fd_node_p->next;
+	 *	free(tmp);
+	 * }
+	 */
 
 	free(fnode_p);
 }
 
 // 1 means it was the last occurrence in list, 0 not the last
 // if there is more node with same filename,
-// add fd to list (the last filename release fds)
 int
 flist_rm_file(int fd, const char *filename, flist_t *flist)
 {
@@ -113,15 +113,19 @@ flist_rm_file(int fd, const char *filename, flist_t *flist)
 	// there must exist node with same filename
 	assert(fnode_p);
 
+	close(fd);
+
 	if (fnode_p->cnt > 1) {
 
-		fd_node_t *fd_node_p = malloc(sizeof (fd_node_t));
-
-		// append current list after node
-		fd_node_p->next		= fnode_p->fd_list; // NULL or nonempty
-		fd_node_p->fd		= fd;
-
-		fnode_p->fd_list = fd_node_p;
+		/*
+		 * fd_node_t *fd_node_p = malloc(sizeof (fd_node_t));
+		 *
+		 * // append current list after node
+		 * fd_node_p->next	= fnode_p->fd_list; // NULL or nonempty
+		 * fd_node_p->fd	= fd;
+		 *
+		 * fnode_p->fd_list = fd_node_p;
+		 */
 
 		fnode_p->cnt--;
 		pthread_mutex_unlock(fmutex);
